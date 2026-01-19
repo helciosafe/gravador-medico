@@ -19,6 +19,20 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <head>
+        {/* Google tag (gtag.js) */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-QPXT7Q09T3"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-QPXT7Q09T3');
+            `,
+          }}
+        />
+        {/* End Google tag */}
+
         {/* Meta Pixel Code */}
         <script
           dangerouslySetInnerHTML={{
