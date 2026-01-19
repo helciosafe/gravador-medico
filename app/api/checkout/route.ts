@@ -1,53 +1,89 @@
 import { NextRequest, NextResponse } from "next/server"
-import { generatePixPayment, processCardPayment, type CheckoutData } from "@/lib/mercadopago"
+
+/**
+ * SOLUÇÃO HÍBRIDA: Coleta dados no checkout customizado e redireciona para Appmax
+ * 
+ * Como a API da Appmax não está acessível diretamente, usamos a URL do checkout
+ * hospedado da Appmax com os dados pré-preenchidos via query params
+ */
+
+const APPMAX_CHECKOUT_BASE = "https://gravadormedico1768482029857.carrinho.app/one-checkout/ocudf"
+const PRODUCT_IDS = {
+  main: process.env.APPMAX_PRODUCT_ID || '32880073',
+  bump1: process.env.APPMAX_ORDER_BUMP_1_ID || '32989468',
+  bump2: process.env.APPMAX_ORDER_BUMP_2_ID || '32989503',
+  bump3: process.env.APPMAX_ORDER_BUMP_3_ID || '32989520',
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
     // Validação básica
-    if (!body.email || !body.name || !body.cpf) {
+    if (!body.email || !body.name) {
       return NextResponse.json({ error: "Dados incompletos" }, { status: 400 })
     }
 
-    // Monta os dados do checkout
-    const checkoutData: CheckoutData = {
-      email: body.email,
+    console.log('📦 Dados recebidos:', {
       name: body.name,
-      cpf: body.cpf,
-      payment_method: body.paymentMethod || "credit_card",
-      items: body.items || [
-        {
-          title: "Método Gravador Médico Completo",
-          quantity: 1,
-          unit_price: body.total || 36,
-        },
-      ],
+      email: body.email,
+      orderBumps: body.orderBumps,
+      paymentMethod: body.paymentMethod,
+    })
+
+    // TODO: Salvar lead no seu banco de dados aqui (Supabase)
+    // await saveLeadToDatabase({ email: body.email, name: body.name })
+
+    // Monta a URL do checkout Appmax com dados pré-preenchidos
+    const checkoutUrl = new URL(`${APPMAX_CHECKOUT_BASE}/${PRODUCT_IDS.main}`)
+    
+    // Adiciona parâmetros do cliente
+    checkoutUrl.searchParams.set('name', body.name)
+    checkoutUrl.searchParams.set('email', body.email)
+    if (body.phone) checkoutUrl.searchParams.set('phone', body.phone)
+    if (body.cpf) checkoutUrl.searchParams.set('cpf', body.cpf)
+
+    // Adiciona UTM params se tiver
+    if (body.utmParams) {
+      Object.entries(body.utmParams).forEach(([key, value]) => {
+        if (value) checkoutUrl.searchParams.set(key, value as string)
+      })
     }
 
-    // Processa pagamento
-    let payment
-    if (body.paymentMethod === "pix") {
-      payment = await generatePixPayment(checkoutData)
-    } else {
-      // Para cartão, precisaria passar card_data
-      checkoutData.card_data = body.cardData
-      payment = await processCardPayment(checkoutData)
+    // Para order bumps, vamos criar URLs específicas
+    // Se selecionou algum bump, redireciona para o checkout do bump
+    let finalUrl = checkoutUrl.toString()
+    
+    if (body.orderBumps && body.orderBumps.length > 0) {
+      // Usa o primeiro order bump selecionado
+      const firstBump = body.orderBumps[0]
+      const bumpId = firstBump === 0 ? PRODUCT_IDS.bump1 : 
+                     firstBump === 1 ? PRODUCT_IDS.bump2 : 
+                     PRODUCT_IDS.bump3
+      
+      // Monta URL do order bump
+      const bumpUrl = new URL(`${APPMAX_CHECKOUT_BASE.replace('/ocudf/', '/ocmdf/')}/${bumpId}`)
+      bumpUrl.searchParams.set('name', body.name)
+      bumpUrl.searchParams.set('email', body.email)
+      if (body.phone) bumpUrl.searchParams.set('phone', body.phone)
+      if (body.cpf) bumpUrl.searchParams.set('cpf', body.cpf)
+      
+      finalUrl = bumpUrl.toString()
     }
 
+    console.log('🔗 URL de redirecionamento:', finalUrl)
+
+    // Retorna URL para redirecionar o cliente
     return NextResponse.json({
       success: true,
-      payment: {
-        id: payment.id,
-        status: payment.status,
-        qr_code: payment.qr_code,
-        qr_code_base64: payment.qr_code_base64,
-      },
+      redirectUrl: finalUrl,
+      message: 'Redirecionando para finalizar pagamento...',
     })
+
   } catch (error: any) {
     console.error("Erro no checkout:", error)
     return NextResponse.json(
-      { error: error.message || "Erro ao processar pagamento" },
+      { error: error.message || "Erro ao processar checkout" },
       { status: 500 }
     )
   }
