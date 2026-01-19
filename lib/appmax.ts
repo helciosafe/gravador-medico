@@ -78,6 +78,13 @@ export interface AppmaxOrderResponse {
  */
 export async function createAppmaxOrder(data: AppmaxOrderRequest): Promise<AppmaxOrderResponse> {
   try {
+    // Debug: Verifica se token está presente
+    console.log('🔑 Token presente:', APPMAX_API_TOKEN ? 'SIM (primeiros 8 chars: ' + APPMAX_API_TOKEN.substring(0, 8) + '...)' : 'NÃO')
+    
+    if (!APPMAX_API_TOKEN) {
+      throw new Error('Token da API Appmax não configurado. Verifique APPMAX_API_TOKEN nas variáveis de ambiente.')
+    }
+    
     // ETAPA 1: Criar Cliente
     const customerResponse = await fetch(`${APPMAX_API_URL}/customer`, {
       method: 'POST',
