@@ -27,10 +27,13 @@ export async function GET(request: NextRequest) {
 
     // Retornar dados do usuário (sem informações sensíveis)
     return NextResponse.json({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      has_access: user.has_access,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        has_access: user.has_access,
+      }
     })
   } catch (error) {
     console.error('Erro ao buscar usuário:', error)
