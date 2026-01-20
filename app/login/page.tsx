@@ -20,15 +20,25 @@ function LoginForm() {
     setError("")
 
     try {
-      // Login com Supabase Auth
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Login com API customizada (JWT)
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
       })
 
-      if (authError) throw authError
+      const data = await response.json()
 
-      // Pegar o redirect da URL ou ir para dashboard
+      if (!response.ok) {
+        throw new Error(data.error || 'Email ou senha incorretos')
+      }
+
+      // Salvar token no localStorage
+      localStorage.setItem('auth_token', data.token)
+
+      // Redirecionar
       const redirect = searchParams.get('redirect') || '/admin/dashboard'
       router.push(redirect)
     } catch (err: any) {
