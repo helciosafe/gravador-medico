@@ -181,6 +181,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       badge: null
     },
     { 
+      icon: Users, 
+      label: 'CRM', 
+      href: '/admin/crm',
+      badge: null
+    },
+    { 
       icon: BarChart3, 
       label: 'Relatórios', 
       href: '/admin/reports',

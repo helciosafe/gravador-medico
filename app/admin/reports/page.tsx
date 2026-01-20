@@ -44,13 +44,22 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState(30) // dias
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [filterType, setFilterType] = useState<'quick' | 'custom'>('quick')
 
-  useEffect(() => {
+  // Função para definir período rápido
+  const setQuickPeriod = (days: number) => {
+    setFilterType('quick')
+    setPeriod(days)
     const end = new Date()
-    const start = subDays(end, period)
+    const start = days === 0 ? startOfDay(end) : subDays(end, days) // 0 = hoje
     setStartDate(format(start, 'yyyy-MM-dd'))
     setEndDate(format(end, 'yyyy-MM-dd'))
-  }, [period])
+  }
+
+  useEffect(() => {
+    // Inicializar com últimos 30 dias
+    setQuickPeriod(30)
+  }, [])
 
   useEffect(() => {
     if (startDate && endDate) {
@@ -256,12 +265,22 @@ Relatório gerado automaticamente pelo Gravador Médico
           <div className="flex-1">
             <label className="block text-sm font-semibold text-gray-400 mb-2">Período Rápido</label>
             <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setQuickPeriod(0)}
+                className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
+                  period === 0 && filterType === 'quick'
+                    ? 'bg-brand-500 text-white shadow-lg'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Hoje
+              </button>
               {[7, 14, 30, 60, 90].map((days) => (
                 <button
                   key={days}
-                  onClick={() => setPeriod(days)}
+                  onClick={() => setQuickPeriod(days)}
                   className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
-                    period === days
+                    period === days && filterType === 'quick'
                       ? 'bg-brand-500 text-white shadow-lg'
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
@@ -274,20 +293,26 @@ Relatório gerado automaticamente pelo Gravador Médico
 
           <div className="flex gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-400 mb-2">Data Início</label>
+              <label className="block text-sm font-semibold text-gray-400 mb-2">Personalizado - Início</label>
               <input
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => {
+                  setFilterType('custom')
+                  setStartDate(e.target.value)
+                }}
                 className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-400 mb-2">Data Fim</label>
+              <label className="block text-sm font-semibold text-gray-400 mb-2">Personalizado - Fim</label>
               <input
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={(e) => {
+                  setFilterType('custom')
+                  setEndDate(e.target.value)
+                }}
                 className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
