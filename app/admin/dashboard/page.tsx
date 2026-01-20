@@ -156,21 +156,21 @@ export default function AdminDashboard() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow"
+      className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-700/50 hover:shadow-2xl hover:border-brand-500/30 transition-all"
     >
       <div className="flex items-center justify-between mb-4">
-        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center`}>
+        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center shadow-lg`}>
           <Icon className="w-6 h-6 text-white" />
         </div>
         <div className={`flex items-center gap-1 text-sm font-bold ${
-          change >= 0 ? 'text-green-600' : 'text-red-600'
+          change >= 0 ? 'text-green-400' : 'text-red-400'
         }`}>
           {change >= 0 ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
           {Math.abs(change).toFixed(1)}%
         </div>
       </div>
-      <h3 className="text-gray-600 text-sm font-semibold mb-1">{title}</h3>
-      <p className="text-3xl font-black text-gray-900">
+      <h3 className="text-gray-400 text-sm font-semibold mb-1">{title}</h3>
+      <p className="text-3xl font-black text-white">
         {prefix}{typeof value === 'number' ? value.toLocaleString('pt-BR', {
           minimumFractionDigits: prefix === 'R$ ' ? 2 : 0,
           maximumFractionDigits: prefix === 'R$ ' ? 2 : 0,
@@ -181,10 +181,10 @@ export default function AdminDashboard() {
 
   const StatusBadge = ({ status }: { status: string }) => {
     const styles = {
-      approved: 'bg-green-100 text-green-700 border-green-200',
-      pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-      rejected: 'bg-red-100 text-red-700 border-red-200',
-      refunded: 'bg-gray-100 text-gray-700 border-gray-200',
+      approved: 'bg-green-500/20 text-green-400 border-green-500/30',
+      pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+      rejected: 'bg-red-500/20 text-red-400 border-red-500/30',
+      refunded: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
     }
 
     const labels = {
@@ -205,8 +205,8 @@ export default function AdminDashboard() {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-brand-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Carregando métricas...</p>
+          <div className="w-16 h-16 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400 font-medium">Carregando métricas...</p>
         </div>
       </div>
     )
@@ -217,19 +217,19 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black text-gray-900">Visão Geral</h1>
-          <p className="text-gray-600 mt-1">Acompanhe suas métricas em tempo real</p>
+          <h1 className="text-3xl font-black text-white">Visão Geral</h1>
+          <p className="text-gray-400 mt-1">Acompanhe suas métricas em tempo real</p>
         </div>
         <div className="flex gap-3">
           <button
             onClick={loadDashboardData}
             disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl hover:bg-gray-700 text-white transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
             Atualizar
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-600 to-brand-500 text-white rounded-xl hover:shadow-lg transition-shadow">
+          <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-600 to-brand-500 text-white rounded-xl hover:shadow-lg hover:shadow-brand-500/30 transition-all">
             <Download className="w-4 h-4" />
             Exportar
           </button>
@@ -273,13 +273,13 @@ export default function AdminDashboard() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Chart */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-700/50">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-xl font-bold text-gray-900">Receita (7 dias)</h3>
-              <p className="text-sm text-gray-600 mt-1">Últimos 7 dias</p>
+              <h3 className="text-xl font-bold text-white">Receita (7 dias)</h3>
+              <p className="text-sm text-gray-400 mt-1">Últimos 7 dias</p>
             </div>
-            <button className="p-2 hover:bg-gray-100 rounded-lg">
+            <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
               <MoreVertical className="w-5 h-5 text-gray-400" />
             </button>
           </div>
@@ -287,19 +287,20 @@ export default function AdminDashboard() {
             <AreaChart data={salesChart}>
               <defs>
                 <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
                   <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
               <YAxis stroke="#9ca3af" fontSize={12} />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: '#fff', 
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: '#1f2937', 
+                  border: '1px solid #374151',
                   borderRadius: '12px',
-                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.3)',
+                  color: '#fff'
                 }}
                 formatter={(value: any) => `R$ ${Number(value).toFixed(2)}`}
               />
@@ -316,27 +317,28 @@ export default function AdminDashboard() {
         </div>
 
         {/* Sales Count Chart */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-700/50">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-xl font-bold text-gray-900">Vendas (7 dias)</h3>
-              <p className="text-sm text-gray-600 mt-1">Número de pedidos</p>
+              <h3 className="text-xl font-bold text-white">Vendas (7 dias)</h3>
+              <p className="text-sm text-gray-400 mt-1">Número de pedidos</p>
             </div>
-            <button className="p-2 hover:bg-gray-100 rounded-lg">
+            <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
               <MoreVertical className="w-5 h-5 text-gray-400" />
             </button>
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={salesChart}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
               <YAxis stroke="#9ca3af" fontSize={12} />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: '#fff', 
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: '#1f2937', 
+                  border: '1px solid #374151',
                   borderRadius: '12px',
-                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.3)',
+                  color: '#fff'
                 }}
               />
               <Bar 
@@ -350,14 +352,14 @@ export default function AdminDashboard() {
       </div>
 
       {/* Recent Sales Table */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b border-gray-100">
+      <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-700/50 overflow-hidden">
+        <div className="p-6 border-b border-gray-700">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-xl font-bold text-gray-900">Vendas Recentes</h3>
-              <p className="text-sm text-gray-600 mt-1">Últimas {recentSales.length} transações</p>
+              <h3 className="text-xl font-bold text-white">Vendas Recentes</h3>
+              <p className="text-sm text-gray-400 mt-1">Últimas {recentSales.length} transações</p>
             </div>
-            <button className="text-brand-600 font-semibold hover:text-brand-700 transition-colors">
+            <button className="text-brand-400 font-semibold hover:text-brand-300 transition-colors">
               Ver todas →
             </button>
           </div>
@@ -365,28 +367,28 @@ export default function AdminDashboard() {
 
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-900/50 border-b border-gray-700">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Cliente</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Valor</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Método</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Data</th>
-                <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Ações</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Cliente</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Valor</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Método</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Data</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-700">
               {recentSales.map((sale) => (
-                <tr key={sale.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={sale.id} className="hover:bg-gray-700/30 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-semibold text-gray-900">{sale.customer_name}</div>
+                    <div className="font-semibold text-white">{sale.customer_name}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-600">{sale.customer_email}</div>
+                    <div className="text-sm text-gray-400">{sale.customer_email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-bold text-green-600">
+                    <div className="font-bold text-green-400">
                       R$ {Number(sale.total_amount).toFixed(2)}
                     </div>
                   </td>
@@ -394,15 +396,15 @@ export default function AdminDashboard() {
                     <StatusBadge status={sale.status} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-600 capitalize">{sale.payment_method}</span>
+                    <span className="text-sm text-gray-400 capitalize">{sale.payment_method}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-400">
                       {format(new Date(sale.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <button className="text-brand-600 hover:text-brand-700 font-semibold text-sm">
+                    <button className="text-brand-400 hover:text-brand-300 font-semibold text-sm transition-colors">
                       <Eye className="w-5 h-5 inline" />
                     </button>
                   </td>
@@ -414,9 +416,9 @@ export default function AdminDashboard() {
 
         {recentSales.length === 0 && (
           <div className="p-12 text-center">
-            <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Nenhuma venda ainda</h3>
-            <p className="text-gray-600">Aguardando a primeira venda via webhook da Appmax</p>
+            <ShoppingCart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-white mb-2">Nenhuma venda ainda</h3>
+            <p className="text-gray-400">Aguardando a primeira venda via webhook da Appmax</p>
           </div>
         )}
       </div>
