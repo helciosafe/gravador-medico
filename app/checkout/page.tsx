@@ -27,6 +27,7 @@ import {
   Wallet,
   X,
   ChevronRight,
+  Copy,
 } from "lucide-react"
 
 export default function CheckoutPage() {
@@ -59,8 +60,12 @@ export default function CheckoutPage() {
     installments: 1,
   })
   
-  // Estado para iframe PIX
-  const [pixIframeUrl, setPixIframeUrl] = useState<string | null>(null)
+  // Estado para dados PIX
+  const [pixData, setPixData] = useState<{
+    qrCode: string
+    emv: string
+    orderId: string
+  } | null>(null)
 
   // Depoimentos carousel
   const [emblaRef] = useEmblaCarousel(
@@ -294,17 +299,21 @@ export default function CheckoutPage() {
       // Processa resposta da API
       if (result.success) {
         if (paymentMethod === 'pix') {
-          // Mostra o iframe do PIX na nossa própria página
-          if (result.redirect_url) {
-            console.log('🔗 Carregando PIX em iframe:', result.redirect_url)
-            setPixIframeUrl(result.redirect_url)
+          // Armazena dados do PIX para exibir nativamente
+          if (result.pix_qr_code && result.pix_emv) {
+            console.log('✅ PIX gerado com sucesso')
+            setPixData({
+              qrCode: result.pix_qr_code,
+              emv: result.pix_emv,
+              orderId: result.order_id
+            })
             setLoading(false)
             return
           }
           
-          // Se não retornou nem URL nem QR Code, erro
+          // Se não retornou dados do PIX, erro
           console.error('❌ Resposta da API:', result)
-          throw new Error('API não retornou URL de pagamento PIX')
+          throw new Error('API não retornou dados do PIX')
         } else if (paymentMethod === 'credit') {
           // Mostra resultado do cartão
           window.location.href = `/success/credit?order_id=${result.order_id}&status=${result.status}`
@@ -1025,19 +1034,44 @@ export default function CheckoutPage() {
         )}
       </AnimatePresence>
 
-      {/* Modal PIX com Iframe */}
+      {/* Tela de Sucesso PIX - Nativa */}
       <AnimatePresence>
-        {pixIframeUrl && (
-          <div className="fixed inset-0 bg-gradient-to-br from-brand-50 via-white to-brand-50 z-50 overflow-y-auto">
-            <div className="min-h-screen py-8 px-4">
-              <div className="container mx-auto max-w-5xl">
-                {/* Header com identidade */}
+        {pixData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-gradient-to-br from-brand-50 via-white to-brand-50 z-40 overflow-y-auto"
+          >
+            {/* Mantém o Header do checkout */}
+            <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-red-600 via-red-500 to-orange-500 text-white shadow-2xl">
+              <div className="container mx-auto px-4 py-4">
+                <div className="flex items-center justify-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5" />
+                    <span className="font-bold">Compra 100% Segura</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-5 h-5" />
+                    <span className="font-bold">Acesso Imediato</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Gift className="w-5 h-5" />
+                    <span className="font-bold">4 Bônus Grátis</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Conteúdo PIX */}
+            <div className="min-h-screen pt-24 pb-12 px-4">
+              <div className="container mx-auto max-w-2xl">
                 <motion.div
-                  initial={{ opacity: 0, y: -20 }}
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="text-center mb-8"
                 >
-                  <div className="inline-flex items-center gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white px-6 py-3 rounded-full text-lg font-bold mb-4 shadow-lg">
+                  <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-full text-lg font-bold mb-4 shadow-lg">
                     <CheckCircle2 className="w-6 h-6" />
                     <span>Pedido Reservado!</span>
                   </div>
@@ -1045,49 +1079,122 @@ export default function CheckoutPage() {
                     Complete seu Pagamento
                   </h1>
                   <p className="text-gray-600 text-lg">
-                    Seu pedido foi reservado. Efetue o pagamento via PIX para confirmar.
+                    Efetue o pagamento via PIX para confirmar seu acesso
                   </p>
                 </motion.div>
 
-                {/* Iframe da Appmax */}
+                {/* Card PIX */}
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-brand-100"
+                  transition={{ delay: 0.1 }}
+                  className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 border-4 border-brand-100"
                 >
-                  <iframe
-                    src={pixIframeUrl}
-                    className="w-full h-[600px] md:h-[700px]"
-                    frameBorder="0"
-                    title="Pagamento PIX"
-                  />
+                  {/* QR Code */}
+                  <div className="flex flex-col items-center mb-8">
+                    <h3 className="text-xl font-black text-gray-900 mb-4">
+                      Escaneie o QR Code
+                    </h3>
+                    <div className="bg-white p-4 rounded-2xl border-4 border-gray-100 shadow-lg">
+                      <img
+                        src={`data:image/png;base64,${pixData.qrCode}`}
+                        alt="QR Code PIX"
+                        className="w-64 h-64 md:w-72 md:h-72"
+                      />
+                    </div>
+                    <p className="text-sm text-gray-600 mt-4 text-center">
+                      Abra o app do seu banco e escaneie o código
+                    </p>
+                  </div>
+
+                  {/* Separador */}
+                  <div className="relative my-8">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t-2 border-gray-200"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-4 bg-white text-gray-500 font-bold">OU</span>
+                    </div>
+                  </div>
+
+                  {/* Pix Copia e Cola */}
+                  <div className="mb-8">
+                    <h3 className="text-xl font-black text-gray-900 mb-4 text-center">
+                      Pix Copia e Cola
+                    </h3>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={pixData.emv}
+                        readOnly
+                        className="w-full px-4 py-3 pr-24 border-2 border-gray-200 rounded-xl bg-gray-50 text-sm font-mono text-gray-700 focus:outline-none"
+                      />
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(pixData.emv)
+                          alert('Código PIX copiado!')
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2"
+                      >
+                        <Copy className="w-4 h-4" />
+                        <span className="hidden sm:inline">Copiar</span>
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2 text-center">
+                      Cole este código no app do seu banco
+                    </p>
+                  </div>
+
+                  {/* Informações */}
+                  <div className="bg-brand-50 rounded-2xl p-6 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <Clock className="w-5 h-5 text-brand-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-gray-900">Pagamento expira em 30 minutos</p>
+                        <p className="text-sm text-gray-600">Após o pagamento, seu acesso é liberado automaticamente</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Shield className="w-5 h-5 text-brand-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-gray-900">Pagamento 100% seguro</p>
+                        <p className="text-sm text-gray-600">Seus dados estão protegidos</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Zap className="w-5 h-5 text-brand-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-gray-900">Acesso instantâneo</p>
+                        <p className="text-sm text-gray-600">Receba tudo por email assim que confirmar</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Ordem */}
+                  <div className="mt-6 pt-6 border-t-2 border-gray-100">
+                    <p className="text-sm text-gray-500 text-center">
+                      Pedido #{pixData.orderId}
+                    </p>
+                  </div>
                 </motion.div>
 
-                {/* Footer com informações */}
+                {/* Aguardando pagamento */}
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="mt-8 text-center space-y-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="mt-8 text-center"
                 >
-                  <div className="flex items-center justify-center gap-6 flex-wrap text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-5 h-5 text-brand-600" />
-                      <span>Pagamento 100% Seguro</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-5 h-5 text-brand-600" />
-                      <span>Acesso Imediato</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Lock className="w-5 h-5 text-brand-600" />
-                      <span>Dados Protegidos</span>
-                    </div>
+                  <div className="inline-flex items-center gap-2 text-gray-600">
+                    <div className="w-2 h-2 bg-brand-600 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-brand-600 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                    <div className="w-2 h-2 bg-brand-600 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                    <span className="ml-2 font-semibold">Aguardando pagamento...</span>
                   </div>
                 </motion.div>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
