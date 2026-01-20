@@ -73,17 +73,21 @@ export default function ProductsPage() {
 
       items?.forEach((item) => {
         const name = item.product_name
+        const price = Number(item.price) || 0
+        const quantity = Number(item.quantity) || 0
+        const totalPrice = price * quantity
+        
         const existing = productMap.get(name)
 
         if (existing) {
-          existing.quantity += item.quantity
-          existing.revenue += Number(item.total_price)
+          existing.quantity += quantity
+          existing.revenue += totalPrice
         } else {
           productMap.set(name, {
             product_name: name,
-            quantity: item.quantity,
-            revenue: Number(item.total_price),
-            averagePrice: Number(item.unit_price),
+            quantity: quantity,
+            revenue: totalPrice,
+            averagePrice: price,
           })
         }
       })
