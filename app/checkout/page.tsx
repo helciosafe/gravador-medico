@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import useEmblaCarousel from 'embla-carousel-react'
 import Autoplay from 'embla-carousel-autoplay'
 import { saveAbandonedCart, markCartAsRecovered } from '@/lib/abandonedCart'
+import { supabase } from '@/lib/supabase'
 import {
   Check,
   Clock,
@@ -86,6 +87,43 @@ export default function CheckoutPage() {
     }, 1000)
     return () => clearInterval(timer)
   }, [])
+
+  // 🎯 REALTIME: Escuta pagamento aprovado no Supabase
+  useEffect(() => {
+    if (!pixData?.orderId) return // Só ativa se tiver PIX gerado
+
+    console.log('👂 Escutando pagamento do pedido:', pixData.orderId)
+
+    // Cria canal Realtime do Supabase
+    const channel = supabase
+      .channel(`payment-${pixData.orderId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'sales',
+          filter: `appmax_order_id=eq.${pixData.orderId}`,
+        },
+        (payload) => {
+          console.log('🔔 Mudança detectada no banco:', payload)
+          
+          if (payload.new && (payload.new.status === 'approved' || payload.new.status === 'paid')) {
+            console.log('✅ Pagamento APROVADO! Redirecionando...')
+            
+            // Redireciona para página de obrigado
+            router.push(`/obrigado?email=${encodeURIComponent(formData.email)}&order_id=${pixData.orderId}`)
+          }
+        }
+      )
+      .subscribe()
+
+    // Cleanup ao desmontar
+    return () => {
+      console.log('🔌 Desconectando listener Realtime')
+      supabase.removeChannel(channel)
+    }
+  }, [pixData?.orderId, formData.email, router])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
