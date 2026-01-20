@@ -227,13 +227,16 @@ export async function createAppmaxOrder(data: AppmaxOrderRequest): Promise<Appma
       console.log(`💰 Total original: R$ ${cartTotal} → Total com desconto: R$ ${orderTotal}`)
     }
 
+    // IMPORTANTE: NÃO enviar campo "discount" separado!
+    // A Appmax faria: total - discount = valor NEGATIVO
+    // Solução: Enviar apenas o total JÁ com desconto aplicado
     const orderPayload = {
       'access-token': APPMAX_API_TOKEN,
-      total: orderTotal, // Total já com desconto aplicado
+      total: orderTotal, // Total final (já com desconto embutido)
       products,
       customer_id: customerId,
       shipping: 0,
-      discount: discount, // Envia desconto para Appmax
+      discount: 0, // Sempre 0 - desconto já está no total
       freight_type: 'Sedex',
     }
     
