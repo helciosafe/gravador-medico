@@ -493,10 +493,10 @@ export default function CheckoutPage() {
                   <button
                     onClick={() => isStep1Valid() && setCurrentStep(2)}
                     disabled={!isStep1Valid()}
-                    className="w-full mt-6 bg-gradient-to-r from-brand-600 to-brand-500 text-white py-4 rounded-xl font-black text-lg hover:from-brand-700 hover:to-brand-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                    className="w-full mt-4 md:mt-6 bg-gradient-to-r from-brand-600 to-brand-500 text-white py-3 md:py-4 rounded-xl font-black text-base md:text-lg hover:from-brand-700 hover:to-brand-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
                   >
                     <span>Continuar</span>
-                    <ArrowRight className="w-5 h-5" />
+                    <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
                   </button>
                 </motion.div>
               )}
@@ -851,36 +851,36 @@ export default function CheckoutPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-3xl shadow-xl p-6 border-2 border-brand-100"
+                className="bg-white rounded-2xl md:rounded-3xl shadow-xl p-4 sm:p-6 border-2 border-brand-100"
               >
-                <h3 className="text-xl font-black text-gray-900 mb-6">Resumo do Pedido</h3>
+                <h3 className="text-lg md:text-xl font-black text-gray-900 mb-4 md:mb-6">Resumo do Pedido</h3>
 
                 {/* Produto Principal */}
-                <div className="mb-6 pb-6 border-b-2 border-gray-100">
-                  <div className="flex items-start gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="w-8 h-8 text-white" />
+                <div className="mb-4 md:mb-6 pb-4 md:pb-6 border-b-2 border-gray-100">
+                  <div className="flex items-start gap-3 md:gap-4">
+                    <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-6 h-6 md:w-8 md:h-8 text-white" />
                     </div>
-                    <div className="flex-1">
-                      <h4 className="font-bold text-gray-900 mb-1">Método Gravador Médico</h4>
-                      <p className="text-sm text-gray-600">Sistema Completo + 4 Bônus</p>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-sm md:text-base text-gray-900 mb-1 truncate">Método Gravador Médico</h4>
+                      <p className="text-xs md:text-sm text-gray-600">Sistema Completo + 4 Bônus</p>
                       <div className="mt-2 flex items-center gap-2">
-                        <div className="text-gray-400 line-through text-sm">R$ 938</div>
-                        <div className="text-2xl font-black text-brand-600">R$ {basePrice}</div>
+                        <div className="text-gray-400 line-through text-xs md:text-sm">R$ 938</div>
+                        <div className="text-xl md:text-2xl font-black text-brand-600">R$ {basePrice}</div>
                       </div>
                     </div>
                   </div>
 
                   {/* Features */}
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-3 md:mt-4 space-y-2">
                     {[
                       "Acesso Imediato e Vitalício",
                       "4 Bônus Exclusivos Inclusos",
                       "Garantia de 7 Dias",
                       "Suporte por 30 Dias",
                     ].map((feature, index) => (
-                      <div key={index} className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="w-4 h-4 text-brand-600 flex-shrink-0" />
+                      <div key={index} className="flex items-center gap-2 text-xs md:text-sm">
+                        <CheckCircle2 className="w-3 h-3 md:w-4 md:h-4 text-brand-600 flex-shrink-0" />
                         <span className="text-gray-700">{feature}</span>
                       </div>
                     ))}
@@ -889,26 +889,26 @@ export default function CheckoutPage() {
 
                 {/* Order Bumps Selecionados */}
                 {selectedOrderBumps.length > 0 && (
-                  <div className="mb-6 pb-6 border-b-2 border-gray-100">
-                    <h4 className="font-bold text-gray-900 mb-3">Extras Selecionados:</h4>
+                  <div className="mb-4 md:mb-6 pb-4 md:pb-6 border-b-2 border-gray-100">
+                    <h4 className="font-bold text-sm md:text-base text-gray-900 mb-3">Extras Selecionados:</h4>
                     {selectedOrderBumps.map((idx) => (
-                      <div key={idx} className="flex items-center justify-between mb-3 text-sm">
-                        <span className="text-gray-700">{orderBumps[idx].title.substring(0, 30)}...</span>
-                        <span className="font-bold text-brand-600">R$ {orderBumps[idx].price}</span>
+                      <div key={idx} className="flex items-center justify-between mb-2 md:mb-3 text-xs md:text-sm">
+                        <span className="text-gray-700 truncate pr-2">{orderBumps[idx].title.substring(0, 25)}...</span>
+                        <span className="font-bold text-brand-600 whitespace-nowrap">R$ {orderBumps[idx].price}</span>
                       </div>
                     ))}
                   </div>
                 )}
 
                 {/* Totais */}
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center justify-between text-gray-700">
+                <div className="space-y-2 md:space-y-3 mb-4 md:mb-6">
+                  <div className="flex items-center justify-between text-sm md:text-base text-gray-700">
                     <span>Subtotal</span>
                     <span className="font-bold">R$ {subtotal.toFixed(2)}</span>
                   </div>
 
-                  <div className="pt-3 border-t-2 border-gray-100">
-                    <div className="flex items-center justify-between text-2xl font-black">
+                  <div className="pt-2 md:pt-3 border-t-2 border-gray-100">
+                    <div className="flex items-center justify-between text-xl md:text-2xl font-black">
                       <span className="text-gray-900">Total</span>
                       <span className="text-brand-600">R$ {total.toFixed(2)}</span>
                     </div>
@@ -916,14 +916,14 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Selos de Segurança */}
-                <div className="space-y-3 pt-6 border-t-2 border-gray-100">
+                <div className="space-y-2 md:space-y-3 pt-4 md:pt-6 border-t-2 border-gray-100">
                   {[
                     { icon: Shield, text: "Compra 100% Segura SSL" },
                     { icon: Lock, text: "Seus dados protegidos" },
                     { icon: CheckCircle2, text: "Garantia de 7 dias" },
                   ].map((item, index) => (
-                    <div key={index} className="flex items-center gap-3 text-sm text-gray-600">
-                      <item.icon className="w-5 h-5 text-brand-600 flex-shrink-0" />
+                    <div key={index} className="flex items-center gap-2 md:gap-3 text-xs md:text-sm text-gray-600">
+                      <item.icon className="w-4 h-4 md:w-5 md:h-5 text-brand-600 flex-shrink-0" />
                       <span>{item.text}</span>
                     </div>
                   ))}
