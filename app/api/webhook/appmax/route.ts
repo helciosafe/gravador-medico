@@ -45,41 +45,50 @@ export async function POST(request: NextRequest) {
     const totalAmount = Number(payload.total_amount || payload.amount || payload.value || 0)
     const paymentMethod = payload.payment_method || payload.payment_type
     
-    if (!orderId || !customerEmail) {
-      console.log('⚠️ Dados insuficientes no payload:', { orderId, customerEmail })
+    // ⚠️ Se não tiver dados mínimos, apenas loga e retorna OK
+    if (!orderId) {
+      console.log('⚠️ Webhook sem order_id - apenas logado')
+      return NextResponse.json({ received: true, warning: 'Sem order_id' }, { status: 200 })
+    }
+    
+    // ✅ IMPORTANTE: Aceita PIX gerado (pending) mesmo sem email
+    // O email pode vir depois no webhook de aprovação
+    if (!customerEmail && status !== 'pending') {
+      console.log('⚠️ Dados incompletos e status não é pending:', { orderId, status })
       return NextResponse.json({ received: true, warning: 'Dados incompletos' }, { status: 200 })
     }
-    if (!orderId || !customerEmail) {
-      console.log('⚠️ Dados insuficientes no payload:', { orderId, customerEmail })
-      return NextResponse.json({ received: true, warning: 'Dados incompletos' }, { status: 200 })
+    
+    // UPSERT cliente (apenas se tiver email)
+    let customerId = null
+    if (customerEmail) {
+      const { data: customer, error: customerError } = await supabase
+        .from('customers')
+        .upsert({ 
+          email: customerEmail,
+          name: customerName,
+        }, { 
+          onConflict: 'email',
+          ignoreDuplicates: false 
+        })
+        .select('id')
+        .single()
+      
+      if (customerError) {
+        console.error('❌ Erro ao criar/atualizar cliente:', customerError)
+      } else {
+        customerId = customer?.id
+      }
     }
     
-    // UPSERT cliente
-    const { data: customer, error: customerError } = await supabase
-      .from('customers')
-      .upsert({ 
-        email: customerEmail,
-        name: customerName,
-      }, { 
-        onConflict: 'email',
-        ignoreDuplicates: false 
-      })
-      .select('id')
-      .single()
-    
-    if (customerError) {
-      console.error('❌ Erro ao criar/atualizar cliente:', customerError)
-    }
-    
-    // UPSERT venda
+    // UPSERT venda (aceita mesmo sem customer_id para PIX pending)
     const { error: salesError } = await supabase.from('sales').upsert({
       appmax_order_id: orderId,
-      customer_id: customer?.id,
-      customer_email: customerEmail,
-      customer_name: customerName,
+      customer_id: customerId,
+      customer_email: customerEmail || null,
+      customer_name: customerName || null,
       total_amount: totalAmount,
       status: status,
-      payment_method: paymentMethod,
+      payment_method: paymentMethod || (status === 'pending' ? 'pix' : null),
     }, { 
       onConflict: 'appmax_order_id',
       ignoreDuplicates: false 
