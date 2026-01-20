@@ -677,10 +677,9 @@ export default function LandingPage() {
                       transition={{ duration: 0.8 }}
                       className="flex-1 text-center md:text-left"
                     >
-                      <h2 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 leading-tight">
+                      <h2 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 leading-tight max-w-lg">
                         <span className="bg-gradient-to-r from-brand-500 to-brand-300 bg-clip-text text-transparent">
-                          Tudo que você precisa<br />
-                          em um só lugar
+                          Tudo que você precisa em um só lugar
                         </span>
                       </h2>
                       
@@ -851,12 +850,12 @@ export default function LandingPage() {
             viewport={{ once: true }}
             className="text-center mb-8 md:mb-16"
           >
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black mb-4 md:mb-6 px-4 leading-tight">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black mb-4 md:mb-6 px-4 leading-tight">
               <span className="bg-gradient-to-r from-gray-900 to-brand-700 bg-clip-text text-transparent">
                 O que muda na sua rotina médica
               </span>
             </h2>
-            <p className="text-sm md:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto px-4">
+            <p className="text-base md:text-xl lg:text-2xl text-gray-600 max-w-3xl mx-auto px-4">
               Benefícios reais que você vai sentir já na primeira semana
             </p>
           </motion.div>
@@ -864,7 +863,12 @@ export default function LandingPage() {
           {/* Carousel/Slider Automático */}
           <div className="relative max-w-4xl mx-auto overflow-hidden py-4">
             <motion.div 
-              className="flex gap-4"
+              className="flex gap-4 cursor-grab active:cursor-grabbing"
+              drag="x"
+              dragConstraints={{ left: -2000, right: 0 }}
+              dragElastic={0.2}
+              dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
+              whileTap={{ cursor: "grabbing" }}
               animate={{
                 x: [0, -1440],
               }}
@@ -872,7 +876,7 @@ export default function LandingPage() {
                 x: {
                   repeat: Infinity,
                   repeatType: "loop",
-                  duration: 12,
+                  duration: 15,
                   ease: "linear",
                 },
               }}
