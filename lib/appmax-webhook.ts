@@ -415,8 +415,6 @@ export async function handleAppmaxWebhook(request: NextRequest, endpoint: string
     console.warn('⚠️ APPMAX_WEBHOOK_SECRET não configurado - assinatura não validada')
   }
 
-  const eventName = payload.event || payload.type || payload?.data?.event
-
   if (eventName === 'test' && process.env.NODE_ENV !== 'production') {
     await logWebhook({
       endpoint,
@@ -431,7 +429,7 @@ export async function handleAppmaxWebhook(request: NextRequest, endpoint: string
   }
 
   const data = payload.data || payload
-  const mapping = resolveStatus(eventName, data?.status || payload?.status)
+  const mapping = resolveStatus(eventName ?? undefined, data?.status || payload?.status)
 
   if (!mapping) {
     await logWebhook({
