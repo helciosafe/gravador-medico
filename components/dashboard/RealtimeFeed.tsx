@@ -20,7 +20,7 @@ interface RealtimeFeedProps {
 export default function RealtimeFeed({ 
   initialEvents = [], 
   autoRefresh = true,
-  refreshInterval = 30000 // 30 segundos
+  refreshInterval = 15000 // 15 segundos - mais rápido
 }: RealtimeFeedProps) {
   const [events, setEvents] = useState<RealtimeEvent[]>(initialEvents)
   const [isLive, setIsLive] = useState(true)

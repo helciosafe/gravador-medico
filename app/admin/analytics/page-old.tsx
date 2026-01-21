@@ -2,17 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
-import { 
-  BarChart3, Users, TrendingUp, Target, DollarSign, Clock, 
-  Eye, Zap, MousePointer, Globe, Smartphone, Activity, 
-  ShoppingCart, UserCheck, RefreshCw
-} from 'lucide-react'
-import { 
-  BarChart, Bar, LineChart, Line, AreaChart, Area, 
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
-  ResponsiveContainer, PieChart, Pie, Cell, RadarChart, 
-  PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
-} from 'recharts'
+import { BarChart3, Users, TrendingUp, Target, DollarSign, Clock, Eye, Zap, MousePointer } from 'lucide-react'
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { motion } from 'framer-motion'
 
 interface HealthMetrics {
@@ -48,33 +39,23 @@ interface FunnelData {
   step_purchased: number
 }
 
-interface DeviceStats {
-  device: string
-  visitors: number
-  sales: number
-  revenue: number
-}
+const COLORS = ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444']
 
-const COLORS = ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#F97316']
-
-export default function AnalyticsPageNew() {
+export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [health, setHealth] = useState<HealthMetrics | null>(null)
   const [attribution, setAttribution] = useState<MarketingAttribution[]>([])
   const [funnel, setFunnel] = useState<FunnelData | null>(null)
   const [onlineVisitors, setOnlineVisitors] = useState(0)
-  const [deviceStats, setDeviceStats] = useState<DeviceStats[]>([])
 
   useEffect(() => {
     loadAnalytics()
-    const interval = setInterval(loadOnlineVisitors, 3000)
+    const interval = setInterval(loadOnlineVisitors, 5000)
     return () => clearInterval(interval)
   }, [])
 
   async function loadAnalytics() {
     try {
-      setRefreshing(true)
       const response = await fetch('/api/admin/analytics', {
         credentials: 'include'
       })
@@ -89,31 +70,10 @@ export default function AnalyticsPageNew() {
       if (result.attribution) setAttribution(result.attribution)
       if (result.funnel) setFunnel(result.funnel)
 
-      // Calcular estatísticas por dispositivo
-      if (result.attribution) {
-        const deviceMap = new Map<string, DeviceStats>()
-        
-        result.attribution.forEach((attr: MarketingAttribution) => {
-          const device = attr.primary_device || 'Desconhecido'
-          const existing = deviceMap.get(device) || { device, visitors: 0, sales: 0, revenue: 0 }
-          
-          deviceMap.set(device, {
-            device,
-            visitors: existing.visitors + attr.visitors,
-            sales: existing.sales + (attr.sales_count || 0),
-            revenue: existing.revenue + (attr.total_revenue || 0)
-          })
-        })
-        
-        setDeviceStats(Array.from(deviceMap.values()))
-      }
-
       setLoading(false)
     } catch (error) {
       console.error('Erro ao carregar analytics:', error)
       setLoading(false)
-    } finally {
-      setRefreshing(false)
     }
   }
 
@@ -152,62 +112,52 @@ export default function AnalyticsPageNew() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-8">
-      <div className="max-w-[1600px] mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-black text-white flex items-center gap-3">
               <BarChart3 className="w-10 h-10 text-brand-400" />
-              Painel de Analytics
+              Revenue Attribution
             </h1>
             <p className="text-gray-400 mt-2">
-              Análise completa de desempenho e atribuição de marketing
+              De onde vem o dinheiro e onde ele trava?
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-gradient-to-r from-green-500/20 to-green-600/20 backdrop-blur-sm rounded-2xl px-6 py-4 border border-green-500/30"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
-                <div>
-                  <p className="text-xs text-gray-400">Online Agora</p>
-                  <p className="text-2xl font-bold text-white">{onlineVisitors}</p>
-                </div>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-gradient-to-r from-green-500/20 to-green-600/20 backdrop-blur-sm rounded-2xl px-6 py-4 border border-green-500/30"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
+              <div>
+                <p className="text-xs text-gray-400">Online Agora</p>
+                <p className="text-2xl font-bold text-white">{onlineVisitors}</p>
               </div>
-            </motion.div>
-            <button
-              onClick={() => loadAnalytics()}
-              disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl hover:bg-gray-700 text-white transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Atualizar
-            </button>
-          </div>
+            </div>
+          </motion.div>
         </div>
 
-        {/* KPIs Principais */}
+        {/* KPIs de Saúde */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <MetricCard
             icon={<Users className="w-6 h-6" />}
-            label="Visitantes Únicos"
+            label="Visitantes"
             value={(health?.unique_visitors || 0).toLocaleString()}
             change={health?.visitors_change || 0}
             color="purple"
           />
           <MetricCard
             icon={<DollarSign className="w-6 h-6" />}
-            label="Receita Total"
+            label="Receita"
             value={`R$ ${((health?.revenue || 0) / 1000).toFixed(1)}k`}
             change={health?.revenue_change || 0}
             color="green"
           />
           <MetricCard
             icon={<Target className="w-6 h-6" />}
-            label="Taxa de Conversão"
+            label="Conversão"
             value={`${(health?.conversion_rate || 0).toFixed(1)}%`}
             change={0}
             color="cyan"
@@ -221,105 +171,82 @@ export default function AnalyticsPageNew() {
           />
           <MetricCard
             icon={<Clock className="w-6 h-6" />}
-            label="Tempo Médio no Site"
-            value={`${Math.round((health?.avg_time_seconds || 0) / 60)}min`}
+            label="Tempo Médio"
+            value={`${Math.round((health?.avg_time_seconds || 0) / 60)}m`}
             change={health?.time_change || 0}
             color="blue"
           />
         </div>
 
-        {/* Grid de Gráficos Principais */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Funil de Conversão */}
-          {funnel && (
-            <Card className="bg-gray-900/50 backdrop-blur-xl border-gray-800 p-6">
-              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <Zap className="w-5 h-5 text-yellow-400" />
-                Funil de Conversão (Últimos 30 dias)
-              </h3>
-              <div className="space-y-4">
-                <FunnelStep 
-                  label="👥 Visitantes Únicos" 
-                  value={funnel.step_visitors || 0} 
-                  percentage={100}
-                  color="purple"
-                />
-                <FunnelStep 
-                  label="👀 Demonstraram Interesse" 
-                  value={funnel.step_interested || 0} 
-                  percentage={funnel.step_visitors ? ((funnel.step_interested || 0) / funnel.step_visitors) * 100 : 0}
-                  color="cyan"
-                  dropOff={funnel.step_visitors - (funnel.step_interested || 0)}
-                />
-                <FunnelStep 
-                  label="🛒 Iniciaram Checkout" 
-                  value={funnel.step_checkout_started || 0} 
-                  percentage={funnel.step_visitors ? ((funnel.step_checkout_started || 0) / funnel.step_visitors) * 100 : 0}
-                  color="green"
-                  dropOff={(funnel.step_interested || 0) - (funnel.step_checkout_started || 0)}
-                />
-                <FunnelStep 
-                  label="💰 Finalizaram Compra" 
-                  value={funnel.step_purchased || 0} 
-                  percentage={funnel.step_visitors ? ((funnel.step_purchased || 0) / funnel.step_visitors) * 100 : 0}
-                  color="orange"
-                  dropOff={(funnel.step_checkout_started || 0) - (funnel.step_purchased || 0)}
-                />
-              </div>
-            </Card>
-          )}
-
-          {/* Distribuição por Dispositivo */}
-          {deviceStats.length > 0 && (
-            <Card className="bg-gray-900/50 backdrop-blur-xl border-gray-800 p-6">
-              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <Smartphone className="w-5 h-5 text-brand-400" />
-                Visitantes por Dispositivo
-              </h3>
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={deviceStats}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(props: any) => `${props.device} ${(props.percent * 100).toFixed(0)}%`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="visitors"
-                  >
-                    {deviceStats.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
+        {/* Funil de Conversão */}
+        {funnel && (
+          <Card className="bg-gray-900/50 backdrop-blur-xl border-gray-800 p-6">
+            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-yellow-400" />
+              Funil de Conversão (30 dias)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={funnelChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="name" stroke="#9CA3AF" />
+                  <YAxis stroke="#9CA3AF" />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
                     labelStyle={{ color: '#F3F4F6' }}
                   />
-                </PieChart>
+                  <Bar dataKey="value" fill="#8B5CF6" radius={[8, 8, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
-            </Card>
-          )}
-        </div>
+              
+              <div className="space-y-4">
+                <FunnelStep 
+                  label="Visitantes" 
+                  value={funnel?.step_visitors || 0} 
+                  percentage={100}
+                  color="purple"
+                />
+                <FunnelStep 
+                  label="Interessados (Pricing/Checkout)" 
+                  value={funnel?.step_interested || 0} 
+                  percentage={funnel?.step_visitors ? ((funnel.step_interested || 0) / funnel.step_visitors) * 100 : 0}
+                  color="cyan"
+                />
+                <FunnelStep 
+                  label="Iniciaram Checkout" 
+                  value={funnel?.step_checkout_started || 0} 
+                  percentage={funnel?.step_visitors ? ((funnel.step_checkout_started || 0) / funnel.step_visitors) * 100 : 0}
+                  color="green"
+                />
+                <FunnelStep 
+                  label="Compraram" 
+                  value={funnel?.step_purchased || 0} 
+                  percentage={funnel?.step_visitors ? ((funnel.step_purchased || 0) / funnel.step_visitors) * 100 : 0}
+                  color="orange"
+                />
+              </div>
+            </div>
+          </Card>
+        )}
 
-        {/* Atribuição de Marketing - Tabela Completa */}
+        {/* Atribuição de Marketing */}
         <Card className="bg-gray-900/50 backdrop-blur-xl border-gray-800 p-6">
           <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
             <MousePointer className="w-5 h-5 text-brand-400" />
-            Atribuição de Marketing - Top 10 Fontes
+            Atribuição de Marketing (Top 10 Fontes)
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-800">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Fonte</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Campanha</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Visitantes</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Vendas</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Receita</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Conv%</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Ticket Médio</th>
-                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Dispositivo</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400">Fonte</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400">Campanha</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400">Visitantes</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400">Vendas</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400">Receita</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400">Conv%</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400">Ticket</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-400">Device</th>
                 </tr>
               </thead>
               <tbody>
@@ -337,7 +264,7 @@ export default function AnalyticsPageNew() {
                         <p className="text-xs text-gray-500">{row.medium}</p>
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-400 max-w-[150px] truncate">{row.campaign}</td>
+                    <td className="py-3 px-4 text-sm text-gray-400">{row.campaign}</td>
                     <td className="py-3 px-4 text-right text-white">{row.visitors.toLocaleString()}</td>
                     <td className="py-3 px-4 text-right text-white font-semibold">{row.sales_count || 0}</td>
                     <td className="py-3 px-4 text-right text-green-400 font-bold">
@@ -365,18 +292,15 @@ export default function AnalyticsPageNew() {
           </div>
         </Card>
 
-        {/* Gráfico de Receita por Fonte */}
+        {/* Análise de Receita por Fonte */}
         <Card className="bg-gray-900/50 backdrop-blur-xl border-gray-800 p-6">
-          <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-green-400" />
-            Receita por Fonte de Tráfego
-          </h3>
+          <h3 className="text-xl font-bold text-white mb-6">Receita por Fonte de Tráfego</h3>
           <ResponsiveContainer width="100%" height={350}>
             <AreaChart data={attribution.slice(0, 8)}>
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -385,12 +309,11 @@ export default function AnalyticsPageNew() {
               <Tooltip 
                 contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
                 labelStyle={{ color: '#F3F4F6' }}
-                formatter={(value: any) => [`R$ ${Number(value || 0).toFixed(2)}`, 'Receita']}
               />
               <Area 
                 type="monotone" 
                 dataKey="total_revenue" 
-                stroke="#10B981" 
+                stroke="#8B5CF6" 
                 fillOpacity={1} 
                 fill="url(#colorRevenue)" 
               />
@@ -428,22 +351,21 @@ function MetricCard({ icon, label, value, change, color }: {
         <div className="text-gray-400">{icon}</div>
         {change !== 0 && (
           <span className={`text-xs font-semibold ${change > 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {change > 0 ? '↑' : '↓'} {Math.abs(change).toFixed(1)}%
+            {change > 0 ? '+' : ''}{change.toFixed(1)}%
           </span>
         )}
       </div>
       <p className="text-sm text-gray-400 mb-1">{label}</p>
-      <p className="text-3xl font-black text-white">{value}</p>
+      <p className="text-2xl font-black text-white">{value}</p>
     </motion.div>
   )
 }
 
-function FunnelStep({ label, value, percentage, color, dropOff }: {
+function FunnelStep({ label, value, percentage, color }: {
   label: string
   value: number
   percentage: number
   color: string
-  dropOff?: number
 }) {
   const colorClasses = {
     purple: 'bg-purple-500',
@@ -455,18 +377,12 @@ function FunnelStep({ label, value, percentage, color, dropOff }: {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-gray-300">{label}</span>
-        <div className="flex items-center gap-3">
-          <span className="text-white font-semibold">{value.toLocaleString()}</span>
-          <span className="text-gray-400 text-sm">({percentage.toFixed(1)}%)</span>
-          {dropOff !== undefined && dropOff > 0 && (
-            <span className="text-red-400 text-xs">-{dropOff}</span>
-          )}
-        </div>
+        <span className="text-sm text-gray-400">{label}</span>
+        <span className="text-white font-semibold">{value.toLocaleString()} ({percentage.toFixed(1)}%)</span>
       </div>
-      <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
+      <div className="w-full bg-gray-800 rounded-full h-2">
         <div 
-          className={`${colorClasses[color as keyof typeof colorClasses]} h-3 rounded-full transition-all duration-500`}
+          className={`${colorClasses[color as keyof typeof colorClasses]} h-2 rounded-full transition-all duration-500`}
           style={{ width: `${percentage}%` }}
         ></div>
       </div>

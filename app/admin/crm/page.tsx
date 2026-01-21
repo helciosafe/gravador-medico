@@ -160,70 +160,41 @@ export default function CRMPage() {
       const start = startOfDay(new Date(startDate))
       const end = endOfDay(new Date(endDate))
       
-      // 1. Buscar todas as vendas no período
-      const { data: sales, error: salesError } = await supabase
-        .from('sales')
+      // Buscar leads da tabela crm_leads
+      const { data: crmLeads, error: crmError } = await supabase
+        .from('crm_leads')
         .select('*')
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString())
         .order('created_at', { ascending: false })
 
-      if (salesError) {
-        console.error('❌ Erro ao buscar vendas:', salesError)
+      if (crmError) {
+        console.error('❌ Erro ao buscar leads do CRM:', crmError)
+        setLeads([])
+      } else {
+        console.log('✅ Leads encontrados:', crmLeads?.length || 0)
+        
+        // Mapear para o formato Lead
+        const mappedLeads: Lead[] = (crmLeads || []).map(lead => ({
+          id: lead.id,
+          name: lead.name || 'Visitante',
+          email: lead.email || '',
+          phone: lead.phone,
+          stage: lead.stage || 'lead',
+          value: Number(lead.value) || 0,
+          source: lead.source || 'Desconhecido',
+          notes: lead.notes,
+          last_contact: lead.last_contact,
+          next_followup: lead.next_followup,
+          created_at: lead.created_at,
+          updated_at: lead.updated_at || lead.created_at,
+        }))
+        
+        setLeads(mappedLeads)
       }
-
-      // 2. Buscar todos os carrinhos abandonados no período
-      const { data: carts, error: cartsError } = await supabase
-        .from('abandoned_carts')
-        .select('*')
-        .gte('created_at', start.toISOString())
-        .lte('created_at', end.toISOString())
-        .order('created_at', { ascending: false })
-
-      if (cartsError) {
-        console.error('❌ Erro ao buscar carrinhos:', cartsError)
-      }
-
-      console.log('✅ Vendas encontradas:', sales?.length || 0)
-      console.log('✅ Carrinhos encontrados:', carts?.length || 0)
-
-      const leadsFromSales: Lead[] = sales?.map(sale => ({
-        id: `sale-${sale.id}`,
-        name: sale.customer_name || 'Cliente',
-        email: sale.customer_email,
-        phone: sale.customer_phone,
-        stage: sale.status === 'approved' || sale.status === 'paid' ? 'won' : 
-               sale.status === 'pending' ? 'proposal' :
-               sale.status === 'processing' ? 'negotiation' :
-               'lead',
-        value: Number(sale.total_amount) || 0,
-        source: 'Checkout - Venda',
-        created_at: sale.created_at,
-        updated_at: sale.updated_at || sale.created_at,
-      })) || []
-
-      const leadsFromCarts: Lead[] = carts?.map(cart => ({
-        id: `cart-${cart.id}`,
-        name: cart.customer_name || 'Cliente',
-        email: cart.customer_email,
-        phone: cart.customer_phone,
-        stage: cart.status === 'abandoned' ? 'lead' : 
-               cart.status === 'recovered' ? 'won' : 'contact',
-        value: Number(cart.total_value) || 0,
-        source: 'Checkout - Carrinho Abandonado',
-        notes: `Abandonou em: ${cart.checkout_step || 'início'}`,
-        created_at: cart.created_at,
-        updated_at: cart.updated_at || cart.created_at,
-      })) || []
-
-      // Combinar todos os leads
-      const allLeads = [...leadsFromSales, ...leadsFromCarts]
-      
-      console.log('✅ Total de leads:', allLeads.length)
-      
-      setLeads(allLeads)
     } catch (error) {
       console.error('Erro ao carregar leads:', error)
+      setLeads([])
     } finally {
       setLoading(false)
     }
@@ -247,14 +218,30 @@ export default function CRMPage() {
 
   const moveLeadToStage = async (leadId: string, newStage: string) => {
     try {
-      // Atualizar localmente
-      setLeads(prev => prev.map(lead => 
-        lead.id === leadId ? { ...lead, stage: newStage, updated_at: new Date().toISOString() } : lead
-      ))
+      // Atualizar no banco de dados
+      const { error } = await supabase
+        .from('crm_leads')
+        .update({ 
+          stage: newStage,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', leadId)
 
-      // TODO: Aqui você criaria uma tabela 'crm_leads' no Supabase
-      // Por enquanto, vamos apenas atualizar o estado local
-      console.log(`✅ Lead ${leadId} movido para ${newStage}`)
+      if (error) {
+        console.error('❌ Erro ao mover lead:', error)
+        return
+      }
+
+      // Atualizar localmente
+      setLeads(prev => 
+        prev.map(lead => 
+          lead.id === leadId 
+            ? { ...lead, stage: newStage, updated_at: new Date().toISOString() } 
+            : lead
+        )
+      )
+      
+      console.log('✅ Lead movido para:', newStage)
     } catch (error) {
       console.error('Erro ao mover lead:', error)
     }

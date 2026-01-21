@@ -86,7 +86,7 @@ export default function ReportsPage() {
         endDate 
       })
 
-      // Buscar vendas do período (SEM sales_items por enquanto)
+      // Buscar vendas do período
       const { data: sales, error } = await supabase
         .from('sales')
         .select('*')
@@ -101,12 +101,14 @@ export default function ReportsPage() {
       }
 
       console.log('✅ Total de vendas no período:', sales?.length || 0)
-      console.log('📦 Exemplo de venda:', sales?.[0])
-      console.log('📦 Status das vendas:', sales?.map(s => s.status))
+      if (sales && sales.length > 0) {
+        console.log('📦 Exemplo de venda:', sales[0])
+        console.log('📦 Status das vendas:', [...new Set(sales.map(s => s.status))])
+      }
 
-      // Filtrar apenas aprovadas (paid já é mapeado para approved no webhook)
+      // Filtrar apenas aprovadas/pagas
       const approvedSales = sales?.filter((s) => 
-        s.status === 'approved'
+        s.status === 'approved' || s.status === 'paid' || s.status === 'complete'
       ) || []
 
       console.log('✅ Vendas aprovadas:', approvedSales.length)

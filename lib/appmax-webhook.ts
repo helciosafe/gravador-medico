@@ -109,30 +109,83 @@ function resolveStatus(event?: string, status?: string) {
   return { status: normalized }
 }
 
+function extractEventType(payload: any): string | null {
+  if (!payload || typeof payload !== 'object') return null
+  return (
+    payload.event ||
+    payload.type ||
+    payload?.event_type ||
+    payload?.data?.event ||
+    payload?.data?.type ||
+    payload?.data?.event_type ||
+    null
+  )
+}
+
 async function logWebhook(params: {
   endpoint: string
   payload: any
   response_status: number
   processing_time_ms: number
+  event_type?: string | null
+  ip_address?: string | null
+  user_agent?: string | null
   error?: string
 }) {
   try {
-    const basePayload: Record<string, any> = {
-      endpoint: params.endpoint,
-      payload: params.payload,
-      response_status: params.response_status,
-      processing_time_ms: params.processing_time_ms,
-      error: params.error || null,
-      success: params.response_status < 400,
-      processed: true,
-      processed_at: new Date().toISOString()
+    const now = new Date().toISOString()
+    const resolvedEventType = params.event_type || extractEventType(params.payload)
+    const baseObject =
+      params.payload && typeof params.payload === 'object'
+        ? params.payload
+        : { raw: params.payload }
+    const enrichedPayload = {
+      ...baseObject,
+      _meta: {
+        endpoint: params.endpoint,
+        response_status: params.response_status,
+        processing_time_ms: params.processing_time_ms,
+        error: params.error || null,
+        logged_at: now
+      }
     }
 
-    const { error } = await supabaseAdmin.from('webhooks_logs').insert(basePayload)
+    const basePayload: Record<string, any> = {
+      source: 'appmax',
+      event_type: resolvedEventType,
+      ip_address: params.ip_address || null,
+      user_agent: params.user_agent || null,
+      payload: enrichedPayload,
+      processed: true,
+      success: params.response_status < 400,
+      error_message: params.error || null,
+      processed_at: now
+    }
 
-    if (error && (error.message?.includes('column') || error.code === 'PGRST204')) {
+    let { error } = await supabaseAdmin.from('webhooks_logs').insert(basePayload)
+
+    if (error) {
+      const compactPayload: Record<string, any> = {
+        payload: enrichedPayload
+      }
+      if (resolvedEventType) {
+        compactPayload.event_type = resolvedEventType
+      }
+      compactPayload.source = 'appmax'
+      compactPayload.processed = true
+      compactPayload.success = params.response_status < 400
+      if (params.error) {
+        compactPayload.error_message = params.error
+      }
+      compactPayload.processed_at = now
+
+      const fallback = await supabaseAdmin.from('webhooks_logs').insert(compactPayload)
+      error = fallback.error
+    }
+
+    if (error) {
       await supabaseAdmin.from('webhooks_logs').insert({
-        payload: params.payload
+        payload: enrichedPayload
       })
     }
   } catch (error) {
@@ -283,6 +336,11 @@ export async function handleAppmaxWebhook(request: NextRequest, endpoint: string
   const secret = process.env.APPMAX_WEBHOOK_SECRET
   const signatureHeader = request.headers.get('x-appmax-signature') || ''
   const timestampHeader = request.headers.get('x-appmax-timestamp')
+  const userAgent = request.headers.get('user-agent') || null
+  const ipAddress =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    null
   const rawBody = await request.text()
 
   let payload: any
@@ -294,11 +352,15 @@ export async function handleAppmaxWebhook(request: NextRequest, endpoint: string
       payload: rawBody,
       response_status: 400,
       processing_time_ms: Date.now() - startTime,
+      ip_address: ipAddress,
+      user_agent: userAgent,
       error: 'Payload inválido'
     })
 
     return { response: NextResponse.json({ error: 'Payload inválido' }, { status: 400 }) }
   }
+
+  const eventName = extractEventType(payload)
 
   if (secret) {
     if (!signatureHeader) {
@@ -307,6 +369,9 @@ export async function handleAppmaxWebhook(request: NextRequest, endpoint: string
         payload,
         response_status: 401,
         processing_time_ms: Date.now() - startTime,
+        event_type: eventName,
+        ip_address: ipAddress,
+        user_agent: userAgent,
         error: 'Assinatura ausente'
       })
       return { response: NextResponse.json({ error: 'Assinatura ausente' }, { status: 401 }) }
@@ -321,6 +386,9 @@ export async function handleAppmaxWebhook(request: NextRequest, endpoint: string
         payload,
         response_status: 401,
         processing_time_ms: Date.now() - startTime,
+        event_type: eventName,
+        ip_address: ipAddress,
+        user_agent: userAgent,
         error: 'Assinatura inválida'
       })
       return { response: NextResponse.json({ error: 'Assinatura inválida' }, { status: 401 }) }
@@ -335,6 +403,9 @@ export async function handleAppmaxWebhook(request: NextRequest, endpoint: string
           payload,
           response_status: 401,
           processing_time_ms: Date.now() - startTime,
+          event_type: eventName,
+          ip_address: ipAddress,
+          user_agent: userAgent,
           error: 'Timestamp inválido'
         })
         return { response: NextResponse.json({ error: 'Timestamp inválido' }, { status: 401 }) }
@@ -351,7 +422,10 @@ export async function handleAppmaxWebhook(request: NextRequest, endpoint: string
       endpoint,
       payload,
       response_status: 200,
-      processing_time_ms: Date.now() - startTime
+      processing_time_ms: Date.now() - startTime,
+      event_type: eventName,
+      ip_address: ipAddress,
+      user_agent: userAgent
     })
     return { response: NextResponse.json({ success: true, message: 'Teste recebido' }) }
   }
@@ -364,7 +438,10 @@ export async function handleAppmaxWebhook(request: NextRequest, endpoint: string
       endpoint,
       payload,
       response_status: 200,
-      processing_time_ms: Date.now() - startTime
+      processing_time_ms: Date.now() - startTime,
+      event_type: eventName,
+      ip_address: ipAddress,
+      user_agent: userAgent
     })
     return { response: NextResponse.json({ success: true, message: 'Evento ignorado' }) }
   }
@@ -392,7 +469,10 @@ export async function handleAppmaxWebhook(request: NextRequest, endpoint: string
     endpoint,
     payload,
     response_status: 200,
-    processing_time_ms: Date.now() - startTime
+    processing_time_ms: Date.now() - startTime,
+    event_type: eventName,
+    ip_address: ipAddress,
+    user_agent: userAgent
   })
 
   if (!orderId || !customerEmail) {

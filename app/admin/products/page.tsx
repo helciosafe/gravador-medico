@@ -90,16 +90,30 @@ export default function ProductsPage() {
         .select('*')
 
       if (perfError) {
-        console.error('⚠️ Erro ao carregar performance (pode ser normal se não tiver vendas):', perfError)
+        console.error('⚠️ Erro ao carregar performance:', perfError)
+        console.log('ℹ️ Isso pode ser normal se a view product_performance não existir ou não tiver dados')
       } else {
         console.log('📊 Performance encontrada:', performanceData?.length)
+        if (performanceData && performanceData.length > 0) {
+          console.log('📊 Exemplo de performance:', performanceData[0])
+        }
       }
 
       // Combinar dados
       const productsWithPerformance = (productsData || []).map(product => {
-        const perf = performanceData?.find(p => p.product_name === product.name)
+        // Tentar encontrar por nome exato primeiro
+        let perf = performanceData?.find(p => p.product_name === product.name)
+        
+        // Se não encontrou, tentar por similaridade (remover espaços e comparar)
         if (!perf) {
-          console.log(`ℹ️ Produto sem vendas: ${product.name}`)
+          const normalizedProductName = product.name.toLowerCase().trim()
+          perf = performanceData?.find(p => 
+            p.product_name?.toLowerCase().trim() === normalizedProductName
+          )
+        }
+        
+        if (!perf) {
+          console.log(`ℹ️ Produto sem vendas: "${product.name}"`)
         }
         return {
           ...product,

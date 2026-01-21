@@ -53,8 +53,8 @@ export function RealtimeVisitors() {
 
     fetchOnline() // Busca inicial
     
-    // ⏱️ Atualiza a cada 5 segundos (Polling é melhor que Realtime para contadores agregados)
-    const interval = setInterval(fetchOnline, 5000) 
+    // ⏱️ Atualiza a cada 3 segundos (mais rápido para feedback instantâneo)
+    const interval = setInterval(fetchOnline, 3000) 
 
     return () => clearInterval(interval)
   }, [])
