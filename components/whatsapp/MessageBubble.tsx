@@ -18,13 +18,13 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
 
   return (
     <div
-      className={`flex mb-4 ${isFromMe ? 'justify-end' : 'justify-start'}`}
+      className={`flex mb-2 ${isFromMe ? 'justify-end' : 'justify-start'}`}
     >
       <div
-        className={`max-w-md px-4 py-2 rounded-lg shadow-sm ${
+        className={`max-w-[65%] px-2 py-1.5 rounded-md shadow-sm ${
           isFromMe
-            ? 'bg-green-500 text-white rounded-br-none'
-            : 'bg-white text-gray-900 rounded-bl-none'
+            ? 'bg-[#005c4b] text-white rounded-br-sm'
+            : 'bg-[#202c33] text-white rounded-bl-sm'
         }`}
       >
         {/* Mídia (se houver) */}
@@ -38,7 +38,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
 
         {/* Conteúdo de texto */}
         {message.content && (
-          <p className="text-sm whitespace-pre-wrap break-words">
+          <p className="text-[14.2px] whitespace-pre-wrap break-words leading-[19px]">
             {message.content}
           </p>
         )}
@@ -46,8 +46,8 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         {/* Timestamp + Status */}
         <div className="flex items-center justify-end gap-1 mt-1">
           <span
-            className={`text-xs ${
-              isFromMe ? 'text-green-100' : 'text-gray-500'
+            className={`text-[11px] ${
+              isFromMe ? 'text-gray-300' : 'text-gray-400'
             }`}
           >
             {format(new Date(message.timestamp), 'HH:mm', { locale: ptBR })}
@@ -139,17 +139,17 @@ function MessageMedia({
  */
 function MessageStatus({ status }: { status?: WhatsAppMessage['status'] }) {
   if (status === 'read') {
-    return <CheckCheck className="w-4 h-4 text-blue-300" />
+    return <CheckCheck className="w-4 h-4 text-[#53bdeb]" />
   }
 
   if (status === 'delivered') {
-    return <CheckCheck className="w-4 h-4 text-green-100" />
+    return <CheckCheck className="w-4 h-4 text-gray-300" />
   }
 
   if (status === 'sent') {
-    return <Check className="w-4 h-4 text-green-100" />
+    return <Check className="w-4 h-4 text-gray-300" />
   }
 
   // Pendente
-  return <Clock className="w-4 h-4 text-green-100" />
+  return <Clock className="w-4 h-4 text-gray-400" />
 }

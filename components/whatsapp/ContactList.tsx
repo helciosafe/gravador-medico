@@ -26,7 +26,7 @@ export default function ContactList({
           <p className="text-sm">Nenhuma conversa encontrada</p>
         </div>
       ) : (
-        <div className="divide-y divide-gray-700">
+        <div>
           {conversations.map((conversation) => (
             <ContactItem
               key={conversation.remote_jid}
@@ -62,13 +62,13 @@ function ContactItem({
   return (
     <button
       onClick={onClick}
-      className={`w-full p-4 hover:bg-gray-700 transition-colors text-left ${
-        isSelected ? 'bg-gray-700' : ''
+      className={`w-full px-4 py-3 hover:bg-[#202c33] transition-colors text-left border-b border-gray-800 ${
+        isSelected ? 'bg-[#2a3942]' : 'bg-[#111b21]'
       }`}
     >
       <div className="flex items-start gap-3">
         {/* Avatar */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 pt-1">
           {conversation.profile_picture_url ? (
             <img
               src={conversation.profile_picture_url}
@@ -76,7 +76,7 @@ function ContactItem({
               className="w-12 h-12 rounded-full object-cover"
             />
           ) : (
-            <div className="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center text-white font-semibold">
+            <div className="w-12 h-12 rounded-full bg-[#6b7c85] flex items-center justify-center text-white font-semibold text-lg">
               {displayName[0]?.toUpperCase() || '?'}
             </div>
           )}
@@ -84,19 +84,19 @@ function ContactItem({
 
         {/* Conteúdo */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="font-semibold text-white truncate">
+          <div className="flex items-baseline justify-between mb-1">
+            <h3 className="font-medium text-white truncate text-[16px]">
               {displayName}
             </h3>
             {lastMessageTime && (
-              <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
+              <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
                 {lastMessageTime}
               </span>
             )}
           </div>
 
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-400 truncate">
+            <p className="text-sm text-gray-400 truncate flex-1">
               {conversation.last_message_from_me && (
                 <span className="text-gray-500 mr-1">Você: </span>
               )}
@@ -104,7 +104,7 @@ function ContactItem({
             </p>
 
             {conversation.unread_count > 0 && (
-              <span className="ml-2 bg-green-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
+              <span className="ml-2 bg-[#00a884] text-white text-xs font-semibold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1.5 flex-shrink-0">
                 {conversation.unread_count}
               </span>
             )}

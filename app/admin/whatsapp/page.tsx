@@ -218,66 +218,75 @@ export default function WhatsAppInboxPage() {
     <ChatLayout
       sidebar={
         <>
-          {/* Header da sidebar */}
-          <div className="p-4 border-b border-gray-700 bg-gray-800">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <MessageSquare className="w-6 h-6" />
-                WhatsApp Inbox
-              </h2>
+          {/* Header da sidebar - Estilo WhatsApp */}
+          <div className="h-[60px] bg-[#202c33] border-b border-gray-700 px-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {/* Avatar do usuário */}
+              <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-gray-300" />
+              </div>
+            </div>
+
+            {/* Ícones de ação */}
+            <div className="flex items-center gap-2">
               <button
-                onClick={loadConversations}
-                className="p-2 hover:bg-gray-700 rounded-full transition"
-                title="Atualizar"
+                onClick={() => {
+                  loadConversations()
+                  loadStats()
+                }}
+                className="p-2 hover:bg-gray-700 rounded-full transition-colors"
+                title="Atualizar conversas"
               >
-                <RefreshCw className="w-5 h-5 text-gray-300" />
+                <RefreshCw className="w-5 h-5 text-gray-300 hover:text-white" />
               </button>
             </div>
+          </div>
 
-            {/* Stats */}
-            <div className="flex gap-4 text-xs text-gray-400 mb-3">
-              <span>📞 {stats.totalContacts} conversas</span>
-              <span>💬 {stats.totalMessages} msgs</span>
-              {stats.totalUnread > 0 && (
-                <span className="font-bold text-green-400">
-                  🔔 {stats.totalUnread} não lidas
-                </span>
-              )}
-            </div>
-
-            {/* Busca */}
+          {/* Busca - Estilo WhatsApp */}
+          <div className="px-3 py-2 bg-[#111b21]">
             <div className="relative">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input
                 type="text"
-                placeholder="Buscar conversa..."
+                placeholder="Pesquisar ou começar uma nova conversa"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400"
+                className="w-full pl-12 pr-4 py-2 bg-[#202c33] text-white text-sm rounded-lg focus:outline-none placeholder-gray-500"
               />
             </div>
           </div>
 
           {/* Lista de conversas */}
-          {loading ? (
-            <div className="p-8 text-center text-gray-400">
-              <p>Carregando...</p>
-            </div>
-          ) : (
-            <ContactList
-              conversations={filteredConversations}
-              selectedRemoteJid={selectedRemoteJid || undefined}
-              onSelectConversation={setSelectedRemoteJid}
-            />
-          )}
+          <div className="flex-1 overflow-y-auto bg-[#111b21]">
+            {loading ? (
+              <div className="p-8 text-center text-gray-400">
+                <div className="flex flex-col items-center gap-2">
+                  <RefreshCw className="w-6 h-6 animate-spin" />
+                  <p className="text-sm">Carregando conversas...</p>
+                </div>
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="p-8 text-center text-gray-400">
+                <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">Nenhuma conversa encontrada</p>
+              </div>
+            ) : (
+              <ContactList
+                conversations={filteredConversations}
+                selectedRemoteJid={selectedRemoteJid || undefined}
+                onSelectConversation={setSelectedRemoteJid}
+              />
+            )}
+          </div>
         </>
       }
     >
       {selectedConversation ? (
         <>
-          {/* Header do chat */}
-          <div className="bg-gray-800 border-b border-gray-700 px-6 py-4">
+          {/* Header do chat - Estilo WhatsApp */}
+          <div className="h-[60px] bg-[#202c33] border-b border-gray-700 px-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
+              {/* Avatar */}
               {selectedConversation.profile_picture_url ? (
                 <img
                   src={selectedConversation.profile_picture_url}
@@ -285,12 +294,14 @@ export default function WhatsAppInboxPage() {
                   className="w-10 h-10 rounded-full object-cover"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white font-bold">
-                  {(selectedConversation.name?.[0] || '?').toUpperCase()}
+                <div className="w-10 h-10 rounded-full bg-[#6b7c85] flex items-center justify-center text-white font-bold text-sm">
+                  {(selectedConversation.name?.[0] || selectedConversation.push_name?.[0] || '?').toUpperCase()}
                 </div>
               )}
+              
+              {/* Nome e info */}
               <div>
-                <h3 className="font-semibold text-white">
+                <h3 className="font-medium text-white text-[16px]">
                   {selectedConversation.name ||
                     selectedConversation.push_name ||
                     selectedConversation.remote_jid}
@@ -300,22 +311,37 @@ export default function WhatsAppInboxPage() {
                 </p>
               </div>
             </div>
+
+            {/* Ícones de ação */}
+            <div className="flex items-center gap-2">
+              <button className="p-2 hover:bg-gray-700 rounded-full transition-colors">
+                <Search className="w-5 h-5 text-gray-300" />
+              </button>
+            </div>
           </div>
 
-          {/* Área de mensagens */}
+          {/* Área de mensagens - Background WhatsApp */}
           <div
-            className="flex-1 overflow-y-auto p-6 bg-gray-900"
+            className="flex-1 overflow-y-auto p-4 bg-[#0b141a]"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23374151' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='400' height='400' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='pattern' x='0' y='0' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Cpath d='M0 20 Q10 10 20 20 T40 20' stroke='%23ffffff' stroke-width='0.3' fill='none' opacity='0.05'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='400' height='400' fill='url(%23pattern)'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'repeat',
+              backgroundSize: '400px 400px'
             }}
           >
             {loadingMessages ? (
-              <div className="text-center text-gray-400">
-                <p>Carregando mensagens...</p>
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-2 text-gray-400">
+                  <RefreshCw className="w-6 h-6 animate-spin" />
+                  <p className="text-sm">Carregando mensagens...</p>
+                </div>
               </div>
             ) : messages.length === 0 ? (
-              <div className="text-center text-gray-400">
-                <p>Nenhuma mensagem ainda</p>
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center text-gray-400">
+                  <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">Nenhuma mensagem ainda</p>
+                </div>
               </div>
             ) : (
               <>
@@ -327,35 +353,37 @@ export default function WhatsAppInboxPage() {
             )}
           </div>
 
-          {/* Input de mensagem (placeholder - não implementado envio) */}
-          <div className="bg-gray-800 border-t border-gray-700 p-4">
-            <div className="flex items-center gap-3">
+          {/* Input de mensagem - Estilo WhatsApp */}
+          <div className="bg-[#202c33] border-t border-gray-700 px-4 py-3">
+            <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="Digite uma mensagem (envio não implementado)"
+                placeholder="Escrever uma mensagem"
                 disabled
-                className="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 text-white rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-700 disabled:text-gray-500 placeholder-gray-500"
+                className="flex-1 px-4 py-2 bg-[#2a3942] text-white rounded-lg text-sm focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-500"
               />
               <button
                 disabled
-                className="p-3 bg-green-500 text-white rounded-full hover:bg-green-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 bg-[#00a884] text-white rounded-full hover:bg-[#00a884]/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="w-5 h-5" />
               </button>
             </div>
             <p className="text-xs text-gray-500 mt-2 text-center">
-              💡 Recurso de envio de mensagens virá em versão futura
+              Recurso de envio em breve
             </p>
           </div>
         </>
       ) : (
-        // Estado vazio
-        <div className="flex-1 flex items-center justify-center bg-gray-900">
-          <div className="text-center text-gray-500">
-            <MessageSquare className="w-24 h-24 mx-auto mb-4 opacity-20" />
-            <h3 className="text-xl font-semibold mb-2 text-gray-400">WhatsApp Inbox</h3>
-            <p className="text-sm">
-              Selecione uma conversa para ver as mensagens
+        // Estado vazio - Estilo WhatsApp
+        <div className="flex-1 flex items-center justify-center bg-[#222e35] border-l border-gray-700">
+          <div className="text-center text-gray-400">
+            <div className="w-48 h-48 mx-auto mb-6 bg-[#202c33] rounded-full flex items-center justify-center">
+              <MessageSquare className="w-24 h-24 opacity-20" />
+            </div>
+            <h3 className="text-2xl font-light mb-2 text-gray-300">WhatsApp Inbox</h3>
+            <p className="text-sm text-gray-500 max-w-md mx-auto">
+              Selecione uma conversa à esquerda para visualizar as mensagens
             </p>
           </div>
         </div>
