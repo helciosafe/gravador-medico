@@ -153,8 +153,23 @@ export default function AdminDashboard() {
         .gte('created_at', last24h)
 
       const failedSales = currentSales.filter(s => 
-        ['canceled', 'cancelado', 'refused', 'failed', 'denied'].includes(s.status)
+        ['canceled', 'cancelado', 'refused', 'failed', 'denied', 'expired'].includes(s.status)
       )
+
+      // ✅ CALCULAR MOTIVOS REAIS de falhas
+      const failureReasons = failedSales.reduce((acc: Record<string, number>, sale: any) => {
+        const reason = sale.failure_reason || 'Motivo não especificado'
+        acc[reason] = (acc[reason] || 0) + 1
+        return acc
+      }, {})
+
+      const reasonsArray = Object.entries(failureReasons)
+        .map(([reason, count]) => ({ reason, count: count as number }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3) // Top 3 motivos
+
+      // ✅ CALCULAR CHARGEBACKS
+      const chargebacks = currentSales.filter(s => s.status === 'chargeback')
 
       setOperationalData({
         recoverableCarts: {
@@ -165,15 +180,15 @@ export default function AdminDashboard() {
         failedPayments: {
           count: failedSales.length,
           totalValue: failedSales.reduce((sum, s) => sum + (s.total_amount || 0), 0),
-          reasons: [
-            { reason: 'Saldo insuficiente', count: Math.floor(failedSales.length * 0.4) },
-            { reason: 'Cartão recusado', count: Math.floor(failedSales.length * 0.35) },
-            { reason: 'Dados inválidos', count: Math.floor(failedSales.length * 0.25) },
-          ] as { reason: string; count: number }[],
+          reasons: reasonsArray.length > 0 ? reasonsArray : [
+            { reason: 'PIX Expirado', count: Math.floor(failedSales.length * 0.35) },
+            { reason: 'Boleto Vencido', count: Math.floor(failedSales.length * 0.30) },
+            { reason: 'Cartão Recusado', count: Math.floor(failedSales.length * 0.35) },
+          ],
         },
         chargebacks: {
-          count: 0, // TODO: Implementar tracking de chargebacks
-          totalValue: 0,
+          count: chargebacks.length,
+          totalValue: chargebacks.reduce((sum, s) => sum + (s.total_amount || 0), 0),
         },
       })
 
