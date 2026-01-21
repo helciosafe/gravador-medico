@@ -62,20 +62,19 @@ function BigNumberCard({ title, value, delta, deltaText, icon, loading }: BigNum
 
 interface BigNumbersProps {
   metrics: {
-    revenue: { current: number; previous: number }
-    averageTicket: { current: number; previous: number }
-    approvalRate: { current: number; previous: number }
-    activeCustomers: { current: number; previous: number }
+    revenue: number
+    sales: number
+    conversion_rate: number
+    average_order_value: number
+    revenue_change: number
+    aov_change: number
+    visitors_change: number
+    time_change: number
   }
   loading?: boolean
 }
 
 export default function BigNumbers({ metrics, loading }: BigNumbersProps) {
-  const calculateDelta = (current: number, previous: number) => {
-    if (previous === 0) return current > 0 ? 100 : 0
-    return ((current - previous) / previous) * 100
-  }
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -89,17 +88,12 @@ export default function BigNumbers({ metrics, loading }: BigNumbersProps) {
     return `${value.toFixed(1)}%`
   }
 
-  const revenueDelta = calculateDelta(metrics.revenue.current, metrics.revenue.previous)
-  const ticketDelta = calculateDelta(metrics.averageTicket.current, metrics.averageTicket.previous)
-  const approvalDelta = calculateDelta(metrics.approvalRate.current, metrics.approvalRate.previous)
-  const customersDelta = calculateDelta(metrics.activeCustomers.current, metrics.activeCustomers.previous)
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       <BigNumberCard
         title="Faturamento Bruto"
-        value={formatCurrency(metrics.revenue.current)}
-        delta={revenueDelta}
+        value={formatCurrency(metrics.revenue || 0)}
+        delta={metrics.revenue_change || 0}
         deltaText="vs últimos 30 dias"
         icon={<DollarSign className="w-5 h-5" />}
         loading={loading}
@@ -107,26 +101,26 @@ export default function BigNumbers({ metrics, loading }: BigNumbersProps) {
       
       <BigNumberCard
         title="Ticket Médio (AOV)"
-        value={formatCurrency(metrics.averageTicket.current)}
-        delta={ticketDelta}
+        value={formatCurrency(metrics.average_order_value || 0)}
+        delta={metrics.aov_change || 0}
         deltaText="vs período anterior"
         icon={<ShoppingCart className="w-5 h-5" />}
         loading={loading}
       />
       
       <BigNumberCard
-        title="Taxa de Aprovação"
-        value={formatPercent(metrics.approvalRate.current)}
-        delta={approvalDelta}
-        deltaText="pagamentos aprovados"
+        title="Taxa de Conversão"
+        value={formatPercent(metrics.conversion_rate || 0)}
+        delta={metrics.visitors_change || 0}
+        deltaText="visitantes → vendas"
         icon={<CreditCard className="w-5 h-5" />}
         loading={loading}
       />
       
       <BigNumberCard
-        title="Clientes Ativos"
-        value={metrics.activeCustomers.current.toString()}
-        delta={customersDelta}
+        title="Total de Vendas"
+        value={metrics.sales?.toString() || '0'}
+        delta={metrics.time_change || 0}
         deltaText="últimos 30 dias"
         icon={<Users className="w-5 h-5" />}
         loading={loading}

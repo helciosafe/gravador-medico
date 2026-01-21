@@ -1,59 +1,29 @@
 /**
  * =============================================
- * HELPERS - Queries Dashboard
+ * DASHBOARD QUERIES - REFATORADO
  * =============================================
- * Funções reutilizáveis para queries do dashboard
- * com filtros de data padronizados (UTC)
+ * Queries otimizadas que leem diretamente das Views SQL
+ * Removida toda lógica de cálculo manual no frontend
+ * 
+ * Views utilizadas:
+ * - analytics_health (métricas principais)
+ * - marketing_attribution (vendas por fonte)
+ * - product_performance (top produtos)
+ * - analytics_visitors_online (visitantes ao vivo)
  * =============================================
  */
 
 import { SupabaseClient } from '@supabase/supabase-js'
-
-// ========================================
-// 1. Helper: Criar range de datas UTC
-// ========================================
-export function createDateRange(startDate: string, endDate: string) {
-  const startIso = `${startDate}T00:00:00.000Z`
-  const endIso = `${endDate}T23:59:59.999Z`
-  
-  return { startIso, endIso }
-}
-
-// ========================================
-// 2. Helper: Query base para vendas
-// ========================================
-export function buildSalesQuery(
-  supabase: SupabaseClient,
-  startDate: string,
-  endDate: string,
-  additionalFilters?: {
-    status?: string[]
-    customer_id?: string
-    product_id?: string
-  }
-) {
-  const { startIso, endIso } = createDateRange(startDate, endDate)
-  
-  let query = supabase
-    .from('sales')
-    .select('*')
-    .gte('created_at', startIso)
-    .lte('created_at', endIso)
-  
-  // Status padrão: vendas aprovadas
-  if (additionalFilters?.status) {
-    query = query.in('status', additionalFilters.status)
-  } else {
-    query = query.in('status', ['approved', 'paid', 'completed'])
-  }
-  
-  // Filtros adicionais
-  if (additionalFilters?.customer_id) {
-    query = query.eq('customer_id', additionalFilters.customer_id)
-  }
-  
-  return query
-}
+import type {
+  AnalyticsHealth,
+  MarketingAttribution,
+  ProductPerformance,
+  AnalyticsVisitorsOnline,
+  AnalyticsFunnel,
+  QueryResponse,
+  QueryArrayResponse,
+  DateRange
+} from './types/analytics'
 
 // ========================================
 // 3. Fetch: Clientes com métricas
@@ -240,140 +210,139 @@ export async function fetchSalesByDay(
 }
 
 // ========================================
-// 8. Fetch: Métricas gerais do dashboard
+// 1. FETCH: Métricas Principais do Dashboard (USANDO VIEW)
 // ========================================
+/**
+ * Busca as métricas principais da view analytics_health
+ * Inclui comparação automática com período anterior (últimos 30 dias vs 30 dias anteriores)
+ */
 export async function fetchDashboardMetrics(
-  supabase: SupabaseClient,
-  startDate: string,
-  endDate: string
-) {
+  supabase: SupabaseClient
+): Promise<{ data: any; error: any }> {
   try {
-    const { startIso, endIso } = createDateRange(startDate, endDate)
-    
-    // Buscar vendas do período
-    const { data: sales, error } = await supabase
-      .from('sales')
-      .select('total_amount, customer_email, created_at')
-      .in('status', ['approved', 'paid', 'completed'])
-      .gte('created_at', startIso)
-      .lte('created_at', endIso)
-    
+    const { data, error } = await supabase
+      .from('analytics_health')
+      .select('*')
+      .single()
+
     if (error) throw error
-    
-    const totalRevenue = (sales || []).reduce((sum, s) => sum + Number(s.total_amount), 0)
-    const totalOrders = (sales || []).length
-    const uniqueCustomers = new Set((sales || []).map(s => s.customer_email)).size
-    const averageTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0
-    
-    return {
-      data: {
-        totalRevenue,
-        totalOrders,
-        totalCustomers: uniqueCustomers,
-        averageTicket,
-      },
-      error: null
-    }
-    
+
+    return { data, error: null }
   } catch (error) {
-    console.error('❌ Erro ao buscar métricas:', error)
-    return {
-      data: {
-        totalRevenue: 0,
-        totalOrders: 0,
-        totalCustomers: 0,
-        averageTicket: 0,
-      },
-      error
-    }
+    console.error('❌ Erro ao buscar métricas do dashboard:', error)
+    throw error // Lança o erro ao invés de retornar dados falsos
   }
 }
 
 // ========================================
-// 9. Fetch: Top produtos por receita
+// 2. FETCH: Top Produtos (USANDO VIEW)
 // ========================================
+/**
+ * Busca os produtos com melhor performance da view otimizada
+ * Ordenados por receita total
+ */
 export async function fetchTopProducts(
   supabase: SupabaseClient,
-  startDate: string,
-  endDate: string,
-  limit: number = 10
-) {
+  limit: number = 5
+): Promise<{ data: any[]; error: any }> {
   try {
-    const { startIso, endIso } = createDateRange(startDate, endDate)
-    
-    // Query com JOIN
     const { data, error } = await supabase
-      .from('sales_items')
-      .select(`
-        product_name,
-        product_sku,
-        price,
-        quantity,
-        total,
-        sales!inner(created_at, status)
-      `)
-      .in('sales.status', ['approved', 'paid', 'completed'])
-      .gte('sales.created_at', startIso)
-      .lte('sales.created_at', endIso)
-    
+      .from('product_performance')
+      .select('*')
+      .order('total_revenue', { ascending: false })
+      .limit(limit)
+
     if (error) throw error
-    
-    // Agrupar por produto
-    const grouped = (data || []).reduce((acc: any[], item) => {
-      const existing = acc.find(p => p.sku === item.product_sku)
-      if (existing) {
-        existing.quantity += item.quantity
-        existing.revenue += Number(item.total)
-        existing.orders++
-      } else {
-        acc.push({
-          name: item.product_name,
-          sku: item.product_sku,
-          quantity: item.quantity,
-          revenue: Number(item.total),
-          orders: 1,
-        })
-      }
-      return acc
-    }, [])
-    
-    // Ordenar por receita e limitar
-    const topProducts = grouped
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, limit)
-    
-    return { data: topProducts || [], error: null }
-    
+
+    return { data: data || [], error: null }
   } catch (error) {
     console.error('❌ Erro ao buscar top produtos:', error)
-    return { data: [], error }
+    throw error
   }
 }
 
 // ========================================
-// 10. Fetch: Vendas por fonte (UTM) - usando VIEW
+// 3. FETCH: Vendas por Fonte (USANDO VIEW)
 // ========================================
+/**
+ * Busca dados de atribuição de marketing da view otimizada
+ * Retorna tráfego, conversões e receita por fonte/meio/campanha
+ */
 export async function fetchSalesBySource(
   supabase: SupabaseClient,
-  startDate: string,
-  endDate: string
-) {
+  limit: number = 10
+): Promise<{ data: any[]; error: any }> {
   try {
-    const { startIso, endIso } = createDateRange(startDate, endDate)
-    
     const { data, error } = await supabase
-      .from('sales_by_source')
+      .from('marketing_attribution')
       .select('*')
-      .gte('first_sale', startDate)
-      .lte('first_sale', endDate)
       .order('total_revenue', { ascending: false })
-    
+      .limit(limit)
+
     if (error) throw error
-    
+
     return { data: data || [], error: null }
-    
   } catch (error) {
     console.error('❌ Erro ao buscar vendas por fonte:', error)
-    return { data: [], error }
+    throw error
+  }
+}
+
+// ========================================
+// HELPER: Criar range de datas UTC
+// ========================================
+export function createDateRange(startDate: string, endDate: string) {
+  const startIso = `${startDate}T00:00:00.000Z`
+  const endIso = `${endDate}T23:59:59.999Z`
+  
+  return { startIso, endIso }
+}
+
+// ========================================
+// 4. FETCH: Visitantes Online (Realtime)
+// ========================================
+/**
+ * Busca o número de visitantes online agora (últimos 5 minutos)
+ * View atualizada automaticamente
+ */
+export async function fetchVisitorsOnline(
+  supabase: SupabaseClient
+): Promise<{ data: any; error: any }> {
+  try {
+    const { data, error } = await supabase
+      .from('analytics_visitors_online')
+      .select('*')
+      .single()
+
+    if (error) throw error
+
+    return { data, error: null }
+  } catch (error) {
+    console.error('❌ Erro ao buscar visitantes online:', error)
+    throw error
+  }
+}
+
+// ========================================
+// 5. FETCH: Funil de Conversão
+// ========================================
+/**
+ * Busca métricas do funil de conversão (visitantes → compra)
+ */
+export async function fetchConversionFunnel(
+  supabase: SupabaseClient
+): Promise<{ data: any; error: any }> {
+  try {
+    const { data, error } = await supabase
+      .from('analytics_funnel')
+      .select('*')
+      .single()
+
+    if (error) throw error
+
+    return { data, error: null }
+  } catch (error) {
+    console.error('❌ Erro ao buscar funil de conversão:', error)
+    throw error
   }
 }

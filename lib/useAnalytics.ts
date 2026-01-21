@@ -55,9 +55,16 @@ export function useAnalytics() {
 
     const currentSessionId = initSession()
 
-    // 2️⃣ DETECTAR DISPOSITIVO
+    // 2️⃣ DETECTAR DISPOSITIVO (Baseado em largura da janela + User Agent)
     const getDeviceType = (): 'mobile' | 'tablet' | 'desktop' => {
       const ua = navigator.userAgent
+      const width = window.innerWidth
+      
+      // Priorizar detecção por largura (mais preciso)
+      if (width < 768) return 'mobile'
+      if (width >= 768 && width < 1024) return 'tablet'
+      
+      // Fallback para User Agent
       if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
         return 'tablet'
       }
@@ -117,11 +124,6 @@ export function useAnalytics() {
 
         if (error) {
           console.error('❌ Erro no heartbeat analytics:', error)
-        } else {
-          console.log('✅ Analytics heartbeat enviado:', {
-            session: currentSessionId.substring(0, 20) + '...',
-            page: window.location.pathname
-          })
         }
       } catch (err) {
         console.error('❌ Exceção no heartbeat:', err)
