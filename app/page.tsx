@@ -1015,24 +1015,24 @@ export default function LandingPage() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-xl mx-auto px-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto px-4">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
               whileHover={{ scale: 1.03, y: -5 }}
-              className="bg-white rounded-2xl p-4 shadow-2xl border-2 border-white/20"
+              className="bg-white rounded-2xl p-4 md:p-6 shadow-2xl border-2 border-white/20"
             >
-              <div className="flex items-center justify-center mb-3">
-                <div className="bg-gradient-to-br from-brand-500 to-brand-300 rounded-full p-2.5">
-                  <Smartphone className="w-7 h-7 text-white" />
+              <div className="flex items-center justify-center mb-3 md:mb-4">
+                <div className="bg-gradient-to-br from-brand-500 to-brand-300 rounded-full p-2.5 md:p-3">
+                  <Smartphone className="w-7 h-7 md:w-8 md:h-8 text-white" />
                 </div>
               </div>
-              <h3 className="text-lg font-black text-gray-900 mb-2 text-center">
+              <h3 className="text-lg md:text-xl font-black text-gray-900 mb-2 md:mb-3 text-center">
                 <span className="text-brand-600">▸</span> Você usa iPhone
               </h3>
-              <p className="text-gray-700 text-center leading-snug text-sm">
+              <p className="text-gray-700 text-center leading-snug text-sm md:text-base">
                 Quem sempre está com o médico? <span className="font-bold text-brand-600">O iPhone.</span> Se você já tem um, tem 80% da solução na mão.
               </p>
             </motion.div>
@@ -1043,17 +1043,17 @@ export default function LandingPage() {
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
               whileHover={{ scale: 1.03, y: -5 }}
-              className="bg-white rounded-2xl p-4 shadow-2xl border-2 border-white/20"
+              className="bg-white rounded-2xl p-4 md:p-6 shadow-2xl border-2 border-white/20"
             >
-              <div className="flex items-center justify-center mb-3">
-                <div className="bg-gradient-to-br from-brand-500 to-brand-300 rounded-full p-2.5">
-                  <Users className="w-7 h-7 text-white" />
+              <div className="flex items-center justify-center mb-3 md:mb-4">
+                <div className="bg-gradient-to-br from-brand-500 to-brand-300 rounded-full p-2.5 md:p-3">
+                  <Users className="w-7 h-7 md:w-8 md:h-8 text-white" />
                 </div>
               </div>
-              <h3 className="text-lg font-black text-gray-900 mb-2 text-center">
+              <h3 className="text-lg md:text-xl font-black text-gray-900 mb-2 md:mb-3 text-center">
                 <span className="text-brand-600">▸</span> Agenda sempre cheia
               </h3>
-              <p className="text-gray-700 text-center leading-snug text-sm">
+              <p className="text-gray-700 text-center leading-snug text-sm md:text-base">
                 Você tem pacientes, tem demanda, mas o tempo escorre entre consultas e <span className="font-bold text-red-600">horas digitando</span>.
               </p>
             </motion.div>
@@ -1064,17 +1064,17 @@ export default function LandingPage() {
               viewport={{ once: true }}
               transition={{ delay: 0.3 }}
               whileHover={{ scale: 1.03, y: -5 }}
-              className="bg-white rounded-2xl p-4 shadow-2xl border-2 border-white/20"
+              className="bg-white rounded-2xl p-4 md:p-6 shadow-2xl border-2 border-white/20"
             >
-              <div className="flex items-center justify-center mb-3">
-                <div className="bg-gradient-to-br from-brand-500 to-brand-300 rounded-full p-2.5">
-                  <Brain className="w-7 h-7 text-white" />
+              <div className="flex items-center justify-center mb-3 md:mb-4">
+                <div className="bg-gradient-to-br from-brand-500 to-brand-300 rounded-full p-2.5 md:p-3">
+                  <Brain className="w-7 h-7 md:w-8 md:h-8 text-white" />
                 </div>
               </div>
-              <h3 className="text-lg font-black text-gray-900 mb-2 text-center">
+              <h3 className="text-lg md:text-xl font-black text-gray-900 mb-2 md:mb-3 text-center">
                 <span className="text-brand-600">▸</span> Odeia digitar
               </h3>
-              <p className="text-gray-700 text-center leading-snug text-sm">
+              <p className="text-gray-700 text-center leading-snug text-sm md:text-base">
                 Você estudou para <span className="font-bold text-brand-600">cuidar de pessoas</span>, não para ser digitador profissional de prontuário.
               </p>
             </motion.div>
@@ -1085,17 +1085,17 @@ export default function LandingPage() {
               viewport={{ once: true }}
               transition={{ delay: 0.4 }}
               whileHover={{ scale: 1.03, y: -5 }}
-              className="bg-white rounded-2xl p-4 shadow-2xl border-2 border-white/20"
+              className="bg-white rounded-2xl p-4 md:p-6 shadow-2xl border-2 border-white/20"
             >
-              <div className="flex items-center justify-center mb-3">
-                <div className="bg-gradient-to-br from-brand-500 to-brand-300 rounded-full p-2.5">
-                  <Shield className="w-7 h-7 text-white" />
+              <div className="flex items-center justify-center mb-3 md:mb-4">
+                <div className="bg-gradient-to-br from-brand-500 to-brand-300 rounded-full p-2.5 md:p-3">
+                  <Shield className="w-7 h-7 md:w-8 md:h-8 text-white" />
                 </div>
               </div>
-              <h3 className="text-lg font-black text-gray-900 mb-2 text-center">
+              <h3 className="text-lg md:text-xl font-black text-gray-900 mb-2 md:mb-3 text-center">
                 <span className="text-brand-600">▸</span> Tentou outros métodos
               </h3>
-              <p className="text-gray-700 text-center leading-snug text-sm">
+              <p className="text-gray-700 text-center leading-snug text-sm md:text-base">
                 Já testou softwares complexos que prometiam tudo e <span className="font-bold text-red-600">entregaram frustração</span>. Este é diferente.
               </p>
             </motion.div>
@@ -1106,17 +1106,17 @@ export default function LandingPage() {
               viewport={{ once: true }}
               transition={{ delay: 0.5 }}
               whileHover={{ scale: 1.03, y: -5 }}
-              className="bg-white rounded-2xl p-4 shadow-2xl border-2 border-white/20"
+              className="bg-white rounded-2xl p-4 md:p-6 shadow-2xl border-2 border-white/20"
             >
-              <div className="flex items-center justify-center mb-3">
-                <div className="bg-gradient-to-br from-brand-500 to-brand-300 rounded-full p-2.5">
-                  <Clock className="w-7 h-7 text-white" />
+              <div className="flex items-center justify-center mb-3 md:mb-4">
+                <div className="bg-gradient-to-br from-brand-500 to-brand-300 rounded-full p-2.5 md:p-3">
+                  <Clock className="w-7 h-7 md:w-8 md:h-8 text-white" />
                 </div>
               </div>
-              <h3 className="text-lg font-black text-gray-900 mb-2 text-center">
+              <h3 className="text-lg md:text-xl font-black text-gray-900 mb-2 md:mb-3 text-center">
                 <span className="text-brand-600">▸</span> Quer mais tempo livre
               </h3>
-              <p className="text-gray-700 text-center leading-snug text-sm">
+              <p className="text-gray-700 text-center leading-snug text-sm md:text-base">
                 Sair no horário, ter fim de semana de verdade, e <span className="font-bold text-brand-600">não levar trabalho pra casa</span>.
               </p>
             </motion.div>
@@ -1127,17 +1127,17 @@ export default function LandingPage() {
               viewport={{ once: true }}
               transition={{ delay: 0.6 }}
               whileHover={{ scale: 1.03, y: -5 }}
-              className="bg-white rounded-2xl p-4 shadow-2xl border-2 border-white/20"
+              className="bg-white rounded-2xl p-4 md:p-6 shadow-2xl border-2 border-white/20"
             >
-              <div className="flex items-center justify-center mb-3">
-                <div className="bg-gradient-to-br from-brand-500 to-brand-300 rounded-full p-2.5">
-                  <Users2 className="w-7 h-7 text-white" />
+              <div className="flex items-center justify-center mb-3 md:mb-4">
+                <div className="bg-gradient-to-br from-brand-500 to-brand-300 rounded-full p-2.5 md:p-3">
+                  <Users2 className="w-7 h-7 md:w-8 md:h-8 text-white" />
                 </div>
               </div>
-              <h3 className="text-lg font-black text-gray-900 mb-2 text-center">
+              <h3 className="text-lg md:text-xl font-black text-gray-900 mb-2 md:mb-3 text-center">
                 <span className="text-brand-600">▸</span> Quer atender melhor
               </h3>
-              <p className="text-gray-700 text-center leading-snug text-sm">
+              <p className="text-gray-700 text-center leading-snug text-sm md:text-base">
                 Manter contato visual, <span className="font-bold text-brand-600">escuta ativa</span>, e criar vínculo genuíno com cada paciente.
               </p>
             </motion.div>
@@ -1215,7 +1215,7 @@ export default function LandingPage() {
             </h2>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 max-w-sm md:max-w-3xl mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 max-w-sm md:max-w-4xl lg:max-w-6xl mx-auto px-4">
             {[
               {
                 icon: Zap,
@@ -1295,13 +1295,13 @@ export default function LandingPage() {
                 style={{ transformStyle: "preserve-3d" }}
                 className="group"
               >
-                <div className="relative h-full bg-white rounded-2xl p-3 md:p-4 pt-5 md:pt-6 border border-gray-200 hover:border-gray-300 transition-all shadow-lg hover:shadow-2xl overflow-visible flex flex-col">
+                <div className="relative h-full bg-white rounded-2xl p-4 md:p-6 pt-5 md:pt-7 border border-gray-200 hover:border-gray-300 transition-all shadow-lg hover:shadow-2xl overflow-visible flex flex-col">
                   
                   {/* Animated gradient glow on hover */}
                   <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500 rounded-3xl`} />
 
                   {/* Mockup area with custom content */}
-                  <div className="relative mb-4 aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl overflow-hidden flex items-center justify-center group-hover:scale-[1.02] transition-transform duration-500 p-2">
+                  <div className="relative mb-4 md:mb-6 aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl overflow-hidden flex items-center justify-center group-hover:scale-[1.02] transition-transform duration-500 p-2 md:p-3">
                     <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-10`} />
                     
                     {/* Custom content based on feature */}
@@ -1313,25 +1313,25 @@ export default function LandingPage() {
                           className="relative"
                         >
                           <div className="absolute inset-0 bg-brand-500 rounded-full blur-xl opacity-40" />
-                          <Clock className="w-20 h-20 text-brand-600 relative z-10" />
+                          <Clock className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 text-brand-600 relative z-10" />
                         </motion.div>
                         <div className="flex flex-col gap-1">
                           <motion.div
                             animate={{ width: ["0%", "100%"] }}
                             transition={{ duration: 2, repeat: Infinity }}
-                            className="h-2 bg-gradient-to-r from-brand-500 to-brand-600 rounded-full"
+                            className="h-2 md:h-2.5 bg-gradient-to-r from-brand-500 to-brand-600 rounded-full"
                             style={{ width: "60px" }}
                           />
                           <motion.div
                             animate={{ width: ["0%", "100%"] }}
                             transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
-                            className="h-2 bg-gradient-to-r from-brand-500 to-brand-600 rounded-full"
+                            className="h-2 md:h-2.5 bg-gradient-to-r from-brand-500 to-brand-600 rounded-full"
                             style={{ width: "80px" }}
                           />
                           <motion.div
                             animate={{ width: ["0%", "100%"] }}
                             transition={{ duration: 2, repeat: Infinity, delay: 0.6 }}
-                            className="h-2 bg-gradient-to-r from-brand-500 to-brand-600 rounded-full"
+                            className="h-2 md:h-2.5 bg-gradient-to-r from-brand-500 to-brand-600 rounded-full"
                             style={{ width: "100px" }}
                           />
                         </div>
@@ -1353,10 +1353,10 @@ export default function LandingPage() {
                             className="relative flex flex-col items-center"
                           >
                             <div className={`absolute inset-0 bg-gradient-to-br ${user.color} rounded-full blur-lg opacity-40`} />
-                            <div className={`relative bg-gradient-to-br ${user.color} p-3 rounded-full shadow-xl mb-1`}>
-                              <Users className="w-6 h-6 text-white" />
+                            <div className={`relative bg-gradient-to-br ${user.color} p-2.5 md:p-3 lg:p-4 rounded-full shadow-xl mb-1`}>
+                              <Users className="w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 text-white" />
                             </div>
-                            <span className="text-xs font-bold text-gray-600">{user.name}</span>
+                            <span className="text-[10px] md:text-xs font-bold text-gray-600">{user.name}</span>
                           </motion.div>
                         ))}
                       </div>
@@ -1377,10 +1377,10 @@ export default function LandingPage() {
                             viewport={{ once: true }}
                             transition={{ delay: i * 0.08 }}
                             whileHover={{ scale: 1.15, rotate: 5 }}
-                            className="relative bg-white rounded-lg p-2 shadow-md hover:shadow-xl transition-all cursor-pointer border border-brand-200"
+                            className="relative bg-white rounded-lg p-2 md:p-3 shadow-md hover:shadow-xl transition-all cursor-pointer border border-brand-200"
                           >
-                            <div className="text-2xl mb-1">{option.icon}</div>
-                            <p className="text-[10px] font-semibold text-gray-700">{option.label}</p>
+                            <div className="text-xl md:text-2xl lg:text-3xl mb-1">{option.icon}</div>
+                            <p className="text-[9px] md:text-[10px] lg:text-xs font-semibold text-gray-700">{option.label}</p>
                           </motion.div>
                         ))}
                       </div>
@@ -1399,10 +1399,10 @@ export default function LandingPage() {
                             viewport={{ once: true }}
                             transition={{ delay: i * 0.1 }}
                             whileHover={{ scale: 1.1, y: -5 }}
-                            className={`relative bg-gradient-to-br ${item.color} rounded-xl p-4 shadow-lg cursor-pointer`}
+                            className={`relative bg-gradient-to-br ${item.color} rounded-xl p-3 md:p-4 lg:p-5 shadow-lg cursor-pointer`}
                           >
-                            <div className="text-3xl mb-2">{item.icon}</div>
-                            <p className="text-white font-bold text-sm">{item.title}</p>
+                            <div className="text-2xl md:text-3xl lg:text-4xl mb-1 md:mb-2">{item.icon}</div>
+                            <p className="text-white font-bold text-xs md:text-sm lg:text-base">{item.title}</p>
                           </motion.div>
                         ))}
                       </div>
@@ -1417,7 +1417,7 @@ export default function LandingPage() {
                         />
                       </div>
                     ) : feature.customContent === "wifi-off" ? (
-                      <WifiOff className="w-24 h-24 text-brand-500 relative z-10" />
+                      <WifiOff className="w-20 h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 text-brand-500 relative z-10" />
                     ) : feature.customContent === "document-3d" ? (
                       <div className="flex gap-3">
                         <motion.div
@@ -1426,8 +1426,8 @@ export default function LandingPage() {
                           className="relative"
                         >
                           <div className="absolute inset-0 bg-orange-500 rounded-lg blur-lg opacity-40" />
-                          <div className="relative bg-white p-4 rounded-lg shadow-2xl border-2 border-orange-200">
-                            <FileText className="w-12 h-12 text-orange-500" />
+                          <div className="relative bg-white p-3 md:p-4 rounded-lg shadow-2xl border-2 border-orange-200">
+                            <FileText className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 text-orange-500" />
                           </div>
                         </motion.div>
                         <motion.div
@@ -1436,8 +1436,8 @@ export default function LandingPage() {
                           className="relative"
                         >
                           <div className="absolute inset-0 bg-red-500 rounded-lg blur-lg opacity-40" />
-                          <div className="relative bg-white p-4 rounded-lg shadow-2xl border-2 border-red-200">
-                            <FileText className="w-12 h-12 text-red-500" />
+                          <div className="relative bg-white p-3 md:p-4 rounded-lg shadow-2xl border-2 border-red-200">
+                            <FileText className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 text-red-500" />
                           </div>
                         </motion.div>
                       </div>
@@ -1470,14 +1470,14 @@ export default function LandingPage() {
                             className="relative"
                           >
                             <div className={`absolute inset-0 bg-gradient-to-br ${bg} rounded-xl blur-md opacity-60`} />
-                            <div className={`relative bg-gradient-to-br ${bg} p-3 rounded-xl shadow-xl`}>
-                              <Icon className={`w-8 h-8 ${color}`} />
+                            <div className={`relative bg-gradient-to-br ${bg} p-2.5 md:p-3 lg:p-4 rounded-xl shadow-xl`}>
+                              <Icon className={`w-7 h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 ${color}`} />
                             </div>
                           </motion.div>
                         ))}
                       </div>
                     ) : feature.customContent === "flags" ? (
-                      <div className="grid grid-cols-4 gap-2 p-4">
+                      <div className="grid grid-cols-4 gap-2 p-3 md:p-4">
                         {["🇧🇷", "🇺🇸", "🇬🇧", "🇪🇸", "🇫🇷", "🇩🇪", "🇮🇹", "🇯🇵", "🇨🇳", "🇰🇷", "🇷🇺", "🇮🇳"].map((flag, i) => (
                           <motion.div
                             key={i}
@@ -1486,7 +1486,7 @@ export default function LandingPage() {
                             viewport={{ once: true }}
                             transition={{ delay: i * 0.05 }}
                             whileHover={{ scale: 1.3 }}
-                            className="text-3xl cursor-pointer"
+                            className="text-2xl md:text-3xl lg:text-4xl cursor-pointer"
                           >
                             {flag}
                           </motion.div>
@@ -1500,7 +1500,7 @@ export default function LandingPage() {
                           className="relative"
                         >
                           <div className="absolute inset-0 bg-yellow-500 rounded-full blur-xl opacity-50" />
-                          <Zap className="w-16 h-16 text-yellow-500 fill-yellow-500 relative z-10" />
+                          <Zap className="w-14 h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 text-yellow-500 fill-yellow-500 relative z-10" />
                         </motion.div>
                         <motion.div
                           animate={{ y: [0, -5, 0] }}
@@ -1508,39 +1508,39 @@ export default function LandingPage() {
                           className="relative"
                         >
                           <div className="absolute inset-0 bg-brand-500 rounded-xl blur-lg opacity-40" />
-                          <div className="relative bg-gradient-to-br from-brand-500 to-brand-600 p-4 rounded-xl shadow-xl">
-                            <Mic className="w-12 h-12 text-white" />
+                          <div className="relative bg-gradient-to-br from-brand-500 to-brand-600 p-3 md:p-4 lg:p-5 rounded-xl shadow-xl">
+                            <Mic className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 text-white" />
                           </div>
                         </motion.div>
                       </div>
                     ) : feature.customContent === "chat-bubbles" ? (
-                      <div className="relative w-full h-full flex items-center justify-center p-4">
+                      <div className="relative w-full h-full flex items-center justify-center p-3 md:p-4">
                         <motion.div
                           animate={{ y: [0, -8, 0] }}
                           transition={{ duration: 2, repeat: Infinity, delay: 0 }}
-                          className="absolute left-6 top-8"
+                          className="absolute left-4 md:left-6 top-6 md:top-8"
                         >
-                          <div className="relative bg-brand-500 text-white p-3 rounded-2xl rounded-tl-none shadow-xl max-w-[120px]">
-                            <p className="text-xs font-semibold">Como foi a consulta?</p>
-                            <MessageCircle className="absolute -bottom-1 -right-1 w-4 h-4 text-brand-600" />
+                          <div className="relative bg-brand-500 text-white p-2.5 md:p-3 rounded-2xl rounded-tl-none shadow-xl max-w-[100px] md:max-w-[120px]">
+                            <p className="text-[10px] md:text-xs font-semibold">Como foi a consulta?</p>
+                            <MessageCircle className="absolute -bottom-1 -right-1 w-3.5 h-3.5 md:w-4 md:h-4 text-brand-600" />
                           </div>
                         </motion.div>
                         <motion.div
                           animate={{ y: [0, -8, 0] }}
                           transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
-                          className="absolute right-6 bottom-8"
+                          className="absolute right-4 md:right-6 bottom-6 md:bottom-8"
                         >
-                          <div className="relative bg-blue-500 text-white p-3 rounded-2xl rounded-tr-none shadow-xl max-w-[120px]">
-                            <p className="text-xs font-semibold">Paciente melhorou muito!</p>
-                            <MessageCircle className="absolute -bottom-1 -left-1 w-4 h-4 text-blue-600" />
+                          <div className="relative bg-blue-500 text-white p-2.5 md:p-3 rounded-2xl rounded-tr-none shadow-xl max-w-[100px] md:max-w-[120px]">
+                            <p className="text-[10px] md:text-xs font-semibold">Paciente melhorou muito!</p>
+                            <MessageCircle className="absolute -bottom-1 -left-1 w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600" />
                           </div>
                         </motion.div>
                       </div>
                     ) : (
                       <>
-                        <feature.icon className="w-20 h-20 text-gray-300 relative z-10" />
+                        <feature.icon className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 text-gray-300 relative z-10" />
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <p className="text-gray-400 text-sm font-medium">Mockup Preview</p>
+                          <p className="text-gray-400 text-xs md:text-sm font-medium">Mockup Preview</p>
                         </div>
                       </>
                     )}
@@ -1548,10 +1548,10 @@ export default function LandingPage() {
 
                   {/* Content */}
                   <div className="relative z-10 flex-1 flex flex-col">
-                    <h3 className="text-base md:text-lg font-bold text-gray-900 mb-2 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:bg-clip-text group-hover:from-gray-900 group-hover:to-blue-600 transition-all">
+                    <h3 className="text-base md:text-xl lg:text-2xl font-bold text-gray-900 mb-2 md:mb-3 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:bg-clip-text group-hover:from-gray-900 group-hover:to-blue-600 transition-all">
                       {feature.title}
                     </h3>
-                    <p className="text-sm md:text-base text-gray-600 leading-snug flex-1">
+                    <p className="text-sm md:text-base lg:text-lg text-gray-600 leading-snug flex-1">
                       {feature.description}
                     </p>
                   </div>
