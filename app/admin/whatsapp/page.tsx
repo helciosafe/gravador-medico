@@ -20,6 +20,8 @@ import ContactList from '@/components/whatsapp/ContactList'
 import MessageBubble from '@/components/whatsapp/MessageBubble'
 import { Send, Search, RefreshCw, MessageSquare } from 'lucide-react'
 
+type FilterType = 'all' | 'unread' | 'favorites' | 'groups'
+
 export default function WhatsAppInboxPage() {
   const [conversations, setConversations] = useState<WhatsAppConversation[]>([])
   const [selectedRemoteJid, setSelectedRemoteJid] = useState<string | null>(null)
@@ -28,6 +30,7 @@ export default function WhatsAppInboxPage() {
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [stats, setStats] = useState({ totalContacts: 0, totalMessages: 0, totalUnread: 0 })
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all')
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -209,9 +212,25 @@ export default function WhatsAppInboxPage() {
     (c) => c.remote_jid === selectedRemoteJid
   )
 
-  const filteredConversations = conversations.filter((c) => {
+  // Aplicar filtros
+  let filteredConversations = conversations.filter((c) => {
     const name = c.name || c.push_name || c.remote_jid
-    return name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    if (!matchesSearch) return false
+    
+    // Filtro por tipo
+    if (activeFilter === 'unread') {
+      return c.unread_count > 0
+    }
+    if (activeFilter === 'favorites') {
+      return false // TODO: Implementar favoritos no banco
+    }
+    if (activeFilter === 'groups') {
+      return c.remote_jid.includes('@g.us')
+    }
+    
+    return true // 'all'
   })
 
   return (
@@ -253,6 +272,52 @@ export default function WhatsAppInboxPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-12 pr-4 py-2 bg-[#202c33] text-white text-sm rounded-lg focus:outline-none placeholder-gray-500"
               />
+            </div>
+          </div>
+
+          {/* Filtros - Estilo WhatsApp */}
+          <div className="px-3 py-2 bg-[#111b21] border-b border-gray-800">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveFilter('all')}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  activeFilter === 'all'
+                    ? 'bg-[#00a884] text-white'
+                    : 'bg-[#2a3942] text-gray-300 hover:bg-[#374952]'
+                }`}
+              >
+                Tudo
+              </button>
+              <button
+                onClick={() => setActiveFilter('unread')}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  activeFilter === 'unread'
+                    ? 'bg-[#00a884] text-white'
+                    : 'bg-[#2a3942] text-gray-300 hover:bg-[#374952]'
+                }`}
+              >
+                Não lidas
+              </button>
+              <button
+                onClick={() => setActiveFilter('favorites')}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  activeFilter === 'favorites'
+                    ? 'bg-[#00a884] text-white'
+                    : 'bg-[#2a3942] text-gray-300 hover:bg-[#374952]'
+                }`}
+              >
+                Favoritas
+              </button>
+              <button
+                onClick={() => setActiveFilter('groups')}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  activeFilter === 'groups'
+                    ? 'bg-[#00a884] text-white'
+                    : 'bg-[#2a3942] text-gray-300 hover:bg-[#374952]'
+                }`}
+              >
+                Grupos
+              </button>
             </div>
           </div>
 

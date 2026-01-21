@@ -4,7 +4,7 @@
 
 'use client'
 
-import { formatDistanceToNow } from 'date-fns'
+import { format, isToday, isYesterday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import type { WhatsAppConversation } from '@/lib/types/whatsapp'
 
@@ -52,11 +52,18 @@ function ContactItem({
 }) {
   const displayName = conversation.name || conversation.push_name || formatPhoneNumber(conversation.remote_jid)
   
+  // Formatar hora exata (HH:mm ou dd/MM se for mais antigo)
   const lastMessageTime = conversation.last_message_timestamp
-    ? formatDistanceToNow(new Date(conversation.last_message_timestamp), {
-        addSuffix: false,
-        locale: ptBR
-      })
+    ? (() => {
+        const date = new Date(conversation.last_message_timestamp)
+        if (isToday(date)) {
+          return format(date, 'HH:mm')
+        } else if (isYesterday(date)) {
+          return 'Ontem'
+        } else {
+          return format(date, 'dd/MM/yy')
+        }
+      })()
     : ''
 
   return (
