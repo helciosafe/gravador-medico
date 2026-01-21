@@ -15,11 +15,23 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const { searchParams } = new URL(request.url)
+    const start = searchParams.get('start') || undefined
+    const end = searchParams.get('end') || undefined
+    const daysParam = Number.parseInt(searchParams.get('days') || '', 10)
+    const days = Number.isFinite(daysParam) ? daysParam : undefined
+
+    const rangeOptions = {
+      start,
+      end,
+      days
+    }
+
     const [metricsRes, chartRes, funnelRes, operationalRes] = await Promise.all([
-      fetchDashboardMetrics(supabaseAdmin),
-      fetchSalesChartData(supabaseAdmin),
-      fetchFunnelData(supabaseAdmin),
-      fetchOperationalHealth(supabaseAdmin)
+      fetchDashboardMetrics(supabaseAdmin, rangeOptions),
+      fetchSalesChartData(supabaseAdmin, rangeOptions),
+      fetchFunnelData(supabaseAdmin, rangeOptions),
+      fetchOperationalHealth(supabaseAdmin, rangeOptions)
     ])
 
     return NextResponse.json({

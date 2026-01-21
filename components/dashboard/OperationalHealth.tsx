@@ -140,7 +140,7 @@ export default function OperationalHealth({ data, loading }: OperationalHealthPr
                 </div>
 
                 <Link
-                  href="/admin/failed-payments"
+                  href="/admin/sales?status=failed"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
                 >
                   Ver Detalhes

@@ -1,6 +1,6 @@
 'use client'
 
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, CreditCard, Users } from 'lucide-react'
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, CreditCard, Users, ShoppingBag } from 'lucide-react'
 
 interface BigNumberProps {
   title: string
@@ -64,17 +64,20 @@ interface BigNumbersProps {
   metrics: {
     revenue: number
     sales: number
+    unique_visitors?: number
     conversion_rate: number
     average_order_value: number
     revenue_change: number
     aov_change: number
     visitors_change: number
     time_change: number
+    sales_change?: number
   }
   loading?: boolean
+  periodLabel?: string
 }
 
-export default function BigNumbers({ metrics, loading }: BigNumbersProps) {
+export default function BigNumbers({ metrics, loading, periodLabel }: BigNumbersProps) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -88,25 +91,28 @@ export default function BigNumbers({ metrics, loading }: BigNumbersProps) {
     return `${value.toFixed(1)}%`
   }
 
+  const periodText = periodLabel || 'últimos 30 dias'
+
   // Previne erro se metrics estiver null
   if (!metrics) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <BigNumberCard title="Faturamento Bruto" value="R$ 0" delta={0} deltaText="vs últimos 30 dias" icon={<DollarSign className="w-5 h-5" />} loading={true} />
         <BigNumberCard title="Ticket Médio (AOV)" value="R$ 0" delta={0} deltaText="vs período anterior" icon={<ShoppingCart className="w-5 h-5" />} loading={true} />
         <BigNumberCard title="Taxa de Conversão" value="0.0%" delta={0} deltaText="visitantes → vendas" icon={<CreditCard className="w-5 h-5" />} loading={true} />
-        <BigNumberCard title="Total de Vendas" value="0" delta={0} deltaText="últimos 30 dias" icon={<Users className="w-5 h-5" />} loading={true} />
+        <BigNumberCard title="Visitantes (últimos 30 dias)" value="0" delta={0} deltaText="vs período anterior" icon={<Users className="w-5 h-5" />} loading={true} />
+        <BigNumberCard title="Total de Vendas (últimos 30 dias)" value="0" delta={0} deltaText="vs período anterior" icon={<ShoppingBag className="w-5 h-5" />} loading={true} />
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
       <BigNumberCard
         title="Faturamento Bruto"
         value={formatCurrency(metrics.revenue || 0)}
         delta={metrics.revenue_change || 0}
-        deltaText="vs últimos 30 dias"
+        deltaText="vs período anterior"
         icon={<DollarSign className="w-5 h-5" />}
         loading={loading}
       />
@@ -128,13 +134,22 @@ export default function BigNumbers({ metrics, loading }: BigNumbersProps) {
         icon={<CreditCard className="w-5 h-5" />}
         loading={loading}
       />
-      
+
       <BigNumberCard
-        title="Total de Vendas"
-        value={metrics.sales?.toString() || '0'}
-        delta={metrics.time_change || 0}
-        deltaText="últimos 30 dias"
+        title={`Visitantes (${periodText})`}
+        value={metrics.unique_visitors?.toString() || '0'}
+        delta={metrics.visitors_change || 0}
+        deltaText="vs período anterior"
         icon={<Users className="w-5 h-5" />}
+        loading={loading}
+      />
+
+      <BigNumberCard
+        title={`Total de Vendas (${periodText})`}
+        value={metrics.sales?.toString() || '0'}
+        delta={metrics.sales_change ?? metrics.time_change ?? 0}
+        deltaText="vs período anterior"
+        icon={<ShoppingBag className="w-5 h-5" />}
         loading={loading}
       />
     </div>

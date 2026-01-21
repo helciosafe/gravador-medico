@@ -16,16 +16,34 @@ export default function AdminDashboard() {
   const [operationalHealth, setOperationalHealth] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [filterType, setFilterType] = useState<'quick' | 'custom'>('quick')
+  const [quickDays, setQuickDays] = useState(30)
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date()
+    date.setDate(date.getDate() - 30)
+    return date.toISOString().split('T')[0]
+  })
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0])
 
   useEffect(() => {
     loadAllData()
-  }, [])
+  }, [filterType, quickDays, startDate, endDate])
 
   const loadAllData = async () => {
     try {
       setRefreshing(true)
       setLoading(true)
-      const response = await fetch('/api/admin/dashboard', {
+      const params = new URLSearchParams()
+      if (filterType === 'custom') {
+        const start = new Date(`${startDate}T00:00:00`)
+        const end = new Date(`${endDate}T23:59:59.999`)
+        params.set('start', start.toISOString())
+        params.set('end', end.toISOString())
+      } else {
+        params.set('days', String(quickDays))
+      }
+
+      const response = await fetch(`/api/admin/dashboard?${params.toString()}`, {
         credentials: 'include'
       })
 
@@ -44,6 +62,57 @@ export default function AdminDashboard() {
       setLoading(false)
       setRefreshing(false)
     }
+  }
+
+  const formatDateLabel = (value: string) => {
+    const [year, month, day] = value.split('-')
+    if (!year || !month || !day) return value
+    return `${day}/${month}/${year}`
+  }
+
+  const periodLabel = filterType === 'custom'
+    ? `${formatDateLabel(startDate)} até ${formatDateLabel(endDate)}`
+    : `últimos ${quickDays} dias`
+
+  const exportDashboard = () => {
+    if (!metrics) return
+
+    const rangeText = periodLabel
+
+    const reportText = `
+RELATÓRIO DO DASHBOARD
+Período: ${rangeText}
+Gerado em: ${new Date().toLocaleString('pt-BR')}
+
+============================================
+RESUMO EXECUTIVO
+============================================
+
+Faturamento: R$ ${(metrics.revenue || 0).toFixed(2)}
+Total de Vendas: ${metrics.sales || 0}
+Visitantes: ${metrics.unique_visitors || 0}
+Ticket Médio: R$ ${(metrics.average_order_value || 0).toFixed(2)}
+Taxa de Conversão: ${(metrics.conversion_rate || 0).toFixed(2)}%
+
+============================================
+RECEITA POR DIA
+============================================
+
+${(chartData || [])
+  .map((row) => `${row.date}: R$ ${(row.amount || 0).toFixed(2)} (${row.sales || 0} vendas)`)
+  .join('\n')}
+
+---
+Relatório gerado automaticamente pelo Gravador Médico
+    `.trim()
+
+    const blob = new Blob([reportText], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `dashboard-${new Date().toISOString().split('T')[0]}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   if (loading) {
@@ -75,15 +144,72 @@ export default function AdminDashboard() {
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
             Atualizar
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-600 to-brand-500 text-white rounded-xl hover:shadow-lg hover:shadow-brand-500/30 transition-all">
+          <button
+            onClick={exportDashboard}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-600 to-brand-500 text-white rounded-xl hover:shadow-lg hover:shadow-brand-500/30 transition-all"
+          >
             <Download className="w-4 h-4" />
             Exportar
           </button>
         </div>
       </div>
 
+      {/* Filtros */}
+      <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-700/50">
+        <div className="flex flex-col md:flex-row gap-4 items-end">
+          <div className="flex-1">
+            <label className="block text-sm font-semibold text-gray-400 mb-2">Período Rápido</label>
+            <div className="flex gap-2 flex-wrap">
+              {[7, 15, 30, 60, 90].map((days) => (
+                <button
+                  key={days}
+                  onClick={() => {
+                    setFilterType('quick')
+                    setQuickDays(days)
+                  }}
+                  className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
+                    filterType === 'quick' && quickDays === days
+                      ? 'bg-brand-500 text-white shadow-lg'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {days} dias
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 flex-wrap">
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 mb-2">Personalizado - Início</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setFilterType('custom')
+                  setStartDate(e.target.value)
+                }}
+                className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 mb-2">Personalizado - Fim</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setFilterType('custom')
+                  setEndDate(e.target.value)
+                }}
+                className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* KPIs */}
-      <BigNumbers metrics={metrics} loading={loading} />
+      <BigNumbers metrics={metrics} loading={loading} periodLabel={periodLabel} />
 
       {/* Saúde Operacional */}
       <OperationalHealth data={operationalHealth || { 
@@ -99,7 +225,7 @@ export default function AdminDashboard() {
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-700/50">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-white">Receita (30 dias)</h3>
+                <h3 className="text-xl font-bold text-white">Receita ({periodLabel})</h3>
                 <p className="text-sm text-gray-400 mt-1">Evolução do faturamento</p>
               </div>
             </div>
@@ -117,7 +243,17 @@ export default function AdminDashboard() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                     <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
-                    <YAxis stroke="#9ca3af" fontSize={12} />
+                    <YAxis
+                      stroke="#9ca3af"
+                      fontSize={12}
+                      tickFormatter={(value: number) =>
+                        new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                          maximumFractionDigits: 0
+                        }).format(value)
+                      }
+                    />
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: '#1f2937', 

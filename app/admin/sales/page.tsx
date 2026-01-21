@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { formatRelativeTime, formatBRDateTime, getUTCDayRange } from '@/lib/date-utils'
+import { formatBRDateTime, getUTCDayRange } from '@/lib/date-utils'
 import { refundOrder } from '@/actions/refund-order'
 import {
   Search,
@@ -51,6 +52,7 @@ export default function SalesPage() {
   const [showDrawer, setShowDrawer] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 20
+  const searchParams = useSearchParams()
   
   const [startDate, setStartDate] = useState(() => {
     const date = new Date()
@@ -66,6 +68,15 @@ export default function SalesPage() {
   useEffect(() => {
     applyFilters()
   }, [sales, searchTerm, statusFilter])
+
+  useEffect(() => {
+    const statusParam = searchParams.get('status')
+    if (!statusParam) return
+    const normalized = statusParam.toLowerCase()
+    if (['all', 'paid', 'pending', 'failed', 'refunded'].includes(normalized)) {
+      setStatusFilter(normalized as StatusFilter)
+    }
+  }, [searchParams])
 
   const loadSales = async () => {
     try {
@@ -131,7 +142,15 @@ export default function SalesPage() {
 
   const getStatusConfig = (status: string, failureReason?: string) => {
     const normalizedStatus = status.toLowerCase()
-    
+
+    if (normalizedStatus === 'expired') {
+      return {
+        label: failureReason || 'Expirado',
+        className: 'bg-gray-600/30 text-gray-200 border-gray-500/60 font-semibold',
+        icon: Clock
+      }
+    }
+
     if (['canceled', 'cancelado', 'cancelled', 'refused', 'rejected', 'failed', 'denied', 'expired', 'chargeback'].includes(normalizedStatus)) {
       return {
         label: failureReason || 'Cancelado',
@@ -312,8 +331,7 @@ export default function SalesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-2xl">{getPaymentMethodIcon(sale.payment_method)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="font-medium text-gray-300">{formatRelativeTime(sale.created_at)}</div>
-                        <div className="text-xs">{formatBRDateTime(sale.created_at)}</div>
+                        <div className="font-medium text-gray-300">{formatBRDateTime(sale.created_at)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {sale.utm_source ? (

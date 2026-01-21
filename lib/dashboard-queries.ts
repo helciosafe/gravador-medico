@@ -25,6 +25,43 @@ import type {
   DateRange
 } from './types/analytics'
 
+type RangeOptions = {
+  start?: string
+  end?: string
+  days?: number
+}
+
+function resolveIsoRange(options?: RangeOptions) {
+  const now = new Date()
+  const endDate = options?.end ? new Date(options.end) : now
+  const days = options?.days && options.days > 0 ? options.days : 30
+  const startDate = options?.start
+    ? new Date(options.start)
+    : new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000)
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    const fallbackEnd = now
+    const fallbackStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    return {
+      startIso: fallbackStart.toISOString(),
+      endIso: fallbackEnd.toISOString(),
+      durationMs: fallbackEnd.getTime() - fallbackStart.getTime()
+    }
+  }
+
+  if (startDate > endDate) {
+    const temp = new Date(startDate)
+    startDate.setTime(endDate.getTime())
+    endDate.setTime(temp.getTime())
+  }
+
+  return {
+    startIso: startDate.toISOString(),
+    endIso: endDate.toISOString(),
+    durationMs: endDate.getTime() - startDate.getTime()
+  }
+}
+
 // ========================================
 // 3. Fetch: Clientes com métricas
 // ========================================
@@ -217,16 +254,30 @@ export async function fetchSalesByDay(
  * Inclui comparação automática com período anterior (últimos 30 dias vs 30 dias anteriores)
  */
 export async function fetchDashboardMetrics(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  options?: RangeOptions
 ): Promise<{ data: any; error: any }> {
   try {
-    const { data, error } = await supabase
-      .from('analytics_health')
-      .select('*')
-      .single()
+    const { startIso, endIso, durationMs } = resolveIsoRange(options)
+    const prevStart = new Date(new Date(startIso).getTime() - durationMs).toISOString()
+    const prevEnd = startIso
 
-    if (error) {
-      console.error('❌ Erro ao buscar métricas do dashboard:', error)
+    const [currentRes, previousRes] = await Promise.all([
+      supabase.rpc('get_analytics_period', {
+        start_date: startIso,
+        end_date: endIso
+      }),
+      supabase.rpc('get_analytics_period', {
+        start_date: prevStart,
+        end_date: prevEnd
+      })
+    ])
+
+    const currentRow = Array.isArray(currentRes.data) ? currentRes.data[0] : currentRes.data
+    const previousRow = Array.isArray(previousRes.data) ? previousRes.data[0] : previousRes.data
+
+    if (currentRes.error) {
+      console.error('❌ Erro ao buscar métricas do dashboard:', currentRes.error)
       return {
         data: {
           unique_visitors: 0,
@@ -238,13 +289,52 @@ export async function fetchDashboardMetrics(
           visitors_change: 0,
           revenue_change: 0,
           aov_change: 0,
-          time_change: 0
+          time_change: 0,
+          sales_change: 0
         },
-        error
+        error: currentRes.error
       }
     }
 
-    return { data, error: null }
+    const toNumber = (value: any) => {
+      const num = Number(value || 0)
+      return Number.isFinite(num) ? num : 0
+    }
+
+    const percentChange = (current: number, previous: number) => {
+      if (!previous) return 0
+      return ((current - previous) / previous) * 100
+    }
+
+    const current = {
+      unique_visitors: toNumber(currentRow?.unique_visitors),
+      sales: toNumber(currentRow?.total_sales),
+      revenue: toNumber(currentRow?.total_revenue),
+      average_order_value: toNumber(currentRow?.average_order_value),
+      conversion_rate: toNumber(currentRow?.conversion_rate)
+    }
+
+    const previous = {
+      unique_visitors: toNumber(previousRow?.unique_visitors),
+      sales: toNumber(previousRow?.total_sales),
+      revenue: toNumber(previousRow?.total_revenue),
+      average_order_value: toNumber(previousRow?.average_order_value)
+    }
+
+    const salesChange = percentChange(current.sales, previous.sales)
+
+    return {
+      data: {
+        ...current,
+        avg_time_seconds: 0,
+        visitors_change: percentChange(current.unique_visitors, previous.unique_visitors),
+        revenue_change: percentChange(current.revenue, previous.revenue),
+        aov_change: percentChange(current.average_order_value, previous.average_order_value),
+        time_change: salesChange,
+        sales_change: salesChange
+      },
+      error: null
+    }
   } catch (error) {
     console.error('❌ Exceção ao buscar métricas do dashboard:', error)
     return {
@@ -258,7 +348,8 @@ export async function fetchDashboardMetrics(
         visitors_change: 0,
         revenue_change: 0,
         aov_change: 0,
-        time_change: 0
+        time_change: 0,
+        sales_change: 0
       },
       error
     }
@@ -269,7 +360,8 @@ export async function fetchDashboardMetrics(
 // 1.1 FETCH: Saude Operacional
 // ========================================
 export async function fetchOperationalHealth(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  options?: RangeOptions
 ): Promise<{
   data: {
     recoverableCarts: { count: number; totalValue: number; last24h: number }
@@ -285,7 +377,8 @@ export async function fetchOperationalHealth(
   }
 
   try {
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const { startIso, endIso } = resolveIsoRange(options)
+    const since = startIso
     const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
     const failedStatuses = [
@@ -308,6 +401,7 @@ export async function fetchOperationalHealth(
         .from('checkout_attempts')
         .select(selectWithReason)
         .gte('created_at', since)
+        .lte('created_at', endIso)
         .in('status', failedStatuses)
       failedRows = result.data
       failedError = result.error
@@ -318,6 +412,7 @@ export async function fetchOperationalHealth(
         .from('checkout_attempts')
         .select('status, total_amount, cart_total, metadata, created_at')
         .gte('created_at', since)
+        .lte('created_at', endIso)
         .in('status', failedStatuses)
       failedRows = fallback.data
       failedError = fallback.error
@@ -407,6 +502,7 @@ export async function fetchOperationalHealth(
         .select('cart_value, created_at, status')
         .eq('status', 'abandoned')
         .gte('created_at', since)
+        .lte('created_at', endIso)
 
       if (!cartError && cartRows) {
         let totalValue = 0
@@ -601,15 +697,16 @@ export async function fetchConversionFunnel(
  */
 export async function fetchSalesChartData(
   supabase: SupabaseClient,
-  days: number = 30
+  options?: RangeOptions
 ): Promise<{ data: any[]; error: any }> {
   try {
-    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+    const { startIso, endIso } = resolveIsoRange(options)
     
     const { data, error } = await supabase
       .from('checkout_attempts')
       .select('created_at, total_amount, status')
-      .gte('created_at', startDate)
+      .gte('created_at', startIso)
+      .lte('created_at', endIso)
       .in('status', ['paid', 'approved', 'completed'])
       .order('created_at', { ascending: true })
 
@@ -655,24 +752,57 @@ export async function fetchSalesChartData(
  * Retorna dados do funil em formato de array para gráficos
  */
 export async function fetchFunnelData(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  options?: RangeOptions
 ): Promise<any[]> {
   try {
-    const { data, error } = await supabase
-      .from('analytics_funnel')
-      .select('*')
-      .single()
+    const { startIso, endIso } = resolveIsoRange(options)
 
-    if (error || !data) {
-      console.warn('⚠️ Dados do funil não encontrados')
+    const { data: visitRows, error: visitError } = await supabase
+      .from('analytics_visits')
+      .select('session_id, page_path')
+      .gte('created_at', startIso)
+      .lte('created_at', endIso)
+
+    if (visitError) {
+      console.warn('⚠️ Erro ao buscar visitas para funil:', visitError)
+      return []
+    }
+
+    const sessions = new Set<string>()
+    const interestedSessions = new Set<string>()
+    for (const row of visitRows || []) {
+      if (!row.session_id) continue
+      sessions.add(row.session_id)
+      const path = String(row.page_path || '').toLowerCase()
+      if (path.includes('checkout') || path.includes('pricing') || path.includes('plano')) {
+        interestedSessions.add(row.session_id)
+      }
+    }
+
+    const checkoutStartedRes = await supabase
+      .from('checkout_attempts')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', startIso)
+      .lte('created_at', endIso)
+
+    const purchasedRes = await supabase
+      .from('checkout_attempts')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', startIso)
+      .lte('created_at', endIso)
+      .in('status', ['paid', 'approved', 'completed'])
+
+    if (checkoutStartedRes.error || purchasedRes.error) {
+      console.warn('⚠️ Erro ao buscar checkout para funil:', checkoutStartedRes.error || purchasedRes.error)
       return []
     }
 
     return [
-      { name: 'Visitantes', value: data.step_visitors || 0, fill: '#3b82f6' },
-      { name: 'Interessados', value: data.step_interested || 0, fill: '#8b5cf6' },
-      { name: 'Checkout', value: data.step_checkout_started || 0, fill: '#f59e0b' },
-      { name: 'Vendas', value: data.step_purchased || 0, fill: '#10b981' },
+      { name: 'Visitantes', value: sessions.size, fill: '#3b82f6' },
+      { name: 'Interessados', value: interestedSessions.size, fill: '#8b5cf6' },
+      { name: 'Checkout', value: checkoutStartedRes.count || 0, fill: '#f59e0b' },
+      { name: 'Vendas', value: purchasedRes.count || 0, fill: '#10b981' },
     ]
   } catch (error) {
     console.error('❌ Erro ao buscar funil:', error)

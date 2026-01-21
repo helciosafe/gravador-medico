@@ -76,10 +76,12 @@ export default function RealtimeFeed({
     }
   }
 
-  const formatTime = (date: Date) => {
+  const formatDateTime = (date: Date) => {
     return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
       hour: '2-digit',
-      minute: '2-digit',
+      minute: '2-digit'
     }).format(new Date(date))
   }
 
@@ -124,7 +126,7 @@ export default function RealtimeFeed({
                   </p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs text-gray-500">
-                      {formatTime(event.timestamp)}
+                      {formatDateTime(event.timestamp)}
                     </span>
                     {event.value && (
                       <>
