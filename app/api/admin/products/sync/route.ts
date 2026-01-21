@@ -35,7 +35,7 @@ interface Product {
 /**
  * POST: Auto-Discovery de Produtos
  * 
- * Varre a tabela de vendas (sales/checkout_attempts), extrai produtos únicos do JSONB `items`
+ * Varre a tabela sales_items, extrai produtos únicos
  * e popula a tabela `products` automaticamente (Upsert).
  * 
  * Evita cadastro manual e garante que todos os produtos vendidos estejam catalogados.
@@ -44,109 +44,29 @@ export async function POST(request: Request) {
   try {
     const supabase = supabaseAdmin
 
-    // 1️⃣ Buscar as últimas vendas para descobrir produtos
-    // Tenta primeiro da tabela sales, depois checkout_attempts
-    let sales: any[] = []
-    
-    const { data: salesData, error: salesError } = await supabase
-      .from('sales')
-      .select('items')
-      .not('items', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(200)
+    // 1️⃣ Executar a função SQL de auto-discovery
+    // Esta função varre sales_items e faz o upsert automaticamente
+    const { data, error } = await supabase.rpc('discover_products_from_sales')
 
-    if (!salesError && salesData) {
-      sales = salesData
-    } else {
-      // Fallback para checkout_attempts se sales não tiver dados
-      const { data: checkoutData, error: checkoutError } = await supabase
-        .from('checkout_attempts')
-        .select('items')
-        .not('items', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(200)
-      
-      if (!checkoutError && checkoutData) {
-        sales = checkoutData
-      }
-    }
-
-    if (sales.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: 'Nenhuma venda encontrada para sincronizar',
-        discovered_count: 0,
-        products: []
-      })
-    }
-
-    // 2️⃣ Processar e Deduplicar Produtos
-    const productMap = new Map<string, any>()
-
-    sales.forEach((sale) => {
-      const items = sale.items as unknown as AppmaxItem[]
-      
-      if (Array.isArray(items)) {
-        items.forEach((item) => {
-          // Normaliza o ID (pode vir como 'id' ou 'product_id')
-          const externalId = String(item.id || item.product_id || '')
-          const productName = item.title || item.name || 'Produto sem nome'
-          const productPrice = Number(item.unit_price || item.price || 0)
-          
-          // Só adiciona se tiver um ID válido
-          if (externalId && externalId !== 'null' && externalId !== 'undefined') {
-            if (!productMap.has(externalId)) {
-              productMap.set(externalId, {
-                external_id: externalId,
-                name: productName,
-                price: productPrice,
-                image_url: item.image_url || null,
-                is_active: true,
-                category: 'auto-detected'
-              })
-            }
-          }
-        })
-      }
-    })
-
-    const productsToUpsert = Array.from(productMap.values())
-
-    if (productsToUpsert.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: 'Nenhum produto novo encontrado',
-        discovered_count: 0,
-        products: []
-      })
-    }
-
-    // 3️⃣ Upsert no Supabase (Insere novos, Atualiza existentes)
-    const { error: upsertError, data: upsertedData } = await supabase
-      .from('products')
-      .upsert(productsToUpsert, { 
-        onConflict: 'external_id',
-        ignoreDuplicates: false // Atualiza se já existir
-      })
-      .select()
-
-    if (upsertError) {
-      console.error('❌ Erro ao fazer upsert de produtos:', upsertError)
+    if (error) {
+      console.error('❌ Erro ao descobrir produtos:', error)
       return NextResponse.json(
         { 
           error: 'Falha ao sincronizar produtos',
-          details: upsertError.message 
+          details: error.message 
         },
         { status: 500 }
       )
     }
 
-    // 4️⃣ Retornar resultado
+    // 2️⃣ Retornar resultado
+    const result = Array.isArray(data) && data.length > 0 ? data[0] : { discovered_count: 0, products_created: [] }
+
     return NextResponse.json({
       success: true,
-      message: `${productsToUpsert.length} produtos sincronizados com sucesso`,
-      discovered_count: productsToUpsert.length,
-      products: productsToUpsert,
+      message: `${result.discovered_count} produtos sincronizados com sucesso`,
+      discovered_count: result.discovered_count,
+      products: result.products_created,
       synced_at: new Date().toISOString()
     })
 

@@ -45,24 +45,23 @@ CREATE TABLE IF NOT EXISTS public.products (
 
 -- 2️⃣ VIEW DE PERFORMANCE DE PRODUTOS (A Mágica)
 -- =============================================
--- Extrai métricas de vendas do JSONB e calcula KPIs críticos
+-- Extrai métricas de vendas e calcula KPIs críticos
 CREATE OR REPLACE VIEW public.product_performance AS
-WITH sales_items AS (
-    -- Explode o array de itens das vendas
+WITH sales_items_data AS (
+    -- Busca dados da tabela sales_items com JOIN em sales
     SELECT 
         s.id as sale_id,
         s.created_at,
         s.status,
-        item->>'title' as product_name,
-        (item->>'unit_price')::numeric as price,
-        (item->>'quantity')::int as quantity,
+        si.product_name,
+        si.price,
+        si.quantity,
         s.customer_email
     FROM 
-        public.sales s,
-        jsonb_array_elements(s.items) as item
+        public.sales s
+        INNER JOIN public.sales_items si ON si.sale_id = s.id
     WHERE 
         s.created_at > (now() - interval '30 days') -- Performance dos últimos 30 dias
-        AND s.items IS NOT NULL
 ),
 product_stats AS (
     SELECT 
@@ -86,7 +85,7 @@ product_stats AS (
         -- Última venda
         MAX(created_at) FILTER (WHERE status IN ('paid', 'approved')) as last_sale_at
     FROM 
-        sales_items
+        sales_items_data
     GROUP BY 
         product_name
 )
@@ -133,18 +132,17 @@ ORDER BY
 CREATE OR REPLACE VIEW public.product_trends AS
 WITH daily_sales AS (
     SELECT 
-        item->>'title' as product_name,
+        si.product_name,
         DATE(s.created_at) as sale_date,
         COUNT(*) FILTER (WHERE s.status IN ('paid', 'approved')) as sales_count,
-        SUM((item->>'unit_price')::numeric * (item->>'quantity')::int) FILTER (WHERE s.status IN ('paid', 'approved')) as daily_revenue
+        SUM(si.price * si.quantity) FILTER (WHERE s.status IN ('paid', 'approved')) as daily_revenue
     FROM 
-        public.sales s,
-        jsonb_array_elements(s.items) as item
+        public.sales s
+        INNER JOIN public.sales_items si ON si.sale_id = s.id
     WHERE 
         s.created_at > (now() - interval '7 days')
-        AND s.items IS NOT NULL
     GROUP BY 
-        product_name, 
+        si.product_name, 
         DATE(s.created_at)
 )
 SELECT 
@@ -182,26 +180,26 @@ DECLARE
     created_products jsonb := '[]'::jsonb;
     counter int := 0;
 BEGIN
-    -- Loop por produtos únicos extraídos das vendas
+    -- Loop por produtos únicos extraídos da tabela sales_items
     FOR product_record IN
         SELECT DISTINCT
-            item->>'title' as name,
-            (item->>'unit_price')::numeric as price,
-            item->>'product_id' as external_id
+            si.product_name as name,
+            AVG(si.price)::numeric as price,
+            si.product_sku as external_id
         FROM 
-            public.sales,
-            jsonb_array_elements(items) as item
+            public.sales_items si
         WHERE 
-            items IS NOT NULL
-            AND item->>'title' IS NOT NULL
+            si.product_name IS NOT NULL
+        GROUP BY
+            si.product_name, si.product_sku
     LOOP
         -- Upsert: Insere se não existir, atualiza preço se mudou
         INSERT INTO public.products (name, price, external_id, category)
         VALUES (
             product_record.name,
             product_record.price,
-            product_record.external_id,
-            'subscription' -- Default, pode ser refinado depois
+            COALESCE(product_record.external_id, 'sku-' || md5(product_record.name)), -- Gera SKU se não existir
+            'auto-detected' -- Categoria padrão para produtos descobertos
         )
         ON CONFLICT (external_id) 
         DO UPDATE SET 
@@ -239,8 +237,11 @@ CREATE INDEX IF NOT EXISTS idx_products_active ON public.products(is_active) WHE
 CREATE INDEX IF NOT EXISTS idx_products_category ON public.products(category);
 CREATE INDEX IF NOT EXISTS idx_products_featured ON public.products(is_featured) WHERE is_featured = true;
 
--- Para extração rápida de itens do JSONB
-CREATE INDEX IF NOT EXISTS idx_sales_items_gin ON public.sales USING gin(items);
+-- Índices para otimizar JOIN entre sales e sales_items
+CREATE INDEX IF NOT EXISTS idx_sales_items_sale_id ON public.sales_items(sale_id);
+CREATE INDEX IF NOT EXISTS idx_sales_items_product_name ON public.sales_items(product_name);
+CREATE INDEX IF NOT EXISTS idx_sales_created_at ON public.sales(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sales_status ON public.sales(status);
 
 -- 6️⃣ ROW LEVEL SECURITY
 -- =============================================
