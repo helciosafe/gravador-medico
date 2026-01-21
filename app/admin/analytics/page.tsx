@@ -53,6 +53,7 @@ interface DeviceStats {
   visitors: number
   sales: number
   revenue: number
+  [key: string]: string | number // Index signature para compatibilidade com Recharts
 }
 
 const COLORS = ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#F97316']

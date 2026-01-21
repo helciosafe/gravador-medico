@@ -246,20 +246,20 @@ SELECT DISTINCT ON (customer_email)
   total_amount,
   'Checkout - Importação Histórica',
   'Importado de vendas antigas',
-  session_id,
-  utm_source,
-  utm_medium,
-  utm_campaign,
+  sales.session_id,
+  sales.utm_source,
+  sales.utm_medium,
+  sales.utm_campaign,
   NULL as device_type,
   NULL as city,
   NULL as country,
-  created_at,
-  updated_at
+  sales.created_at,
+  sales.updated_at
 FROM sales
-WHERE created_at >= NOW() - INTERVAL '90 days'
-  AND customer_email IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM crm_leads WHERE email = sales.customer_email)
-ORDER BY customer_email, created_at DESC;
+WHERE sales.created_at >= NOW() - INTERVAL '90 days'
+  AND sales.customer_email IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM crm_leads WHERE crm_leads.email = sales.customer_email)
+ORDER BY customer_email, sales.created_at DESC;
 
 -- 8. Popular com carrinhos abandonados
 INSERT INTO crm_leads (
@@ -291,20 +291,20 @@ SELECT DISTINCT ON (customer_email)
   cart_value,
   'Checkout - Carrinho Abandonado',
   'Abandonou em: ' || COALESCE(checkout_step, 'início'),
-  session_id,
-  utm_source,
-  utm_medium,
-  utm_campaign,
-  device_type,
-  city,
-  country,
-  created_at,
-  updated_at
+  abandoned_carts.session_id,
+  abandoned_carts.utm_source,
+  abandoned_carts.utm_medium,
+  abandoned_carts.utm_campaign,
+  abandoned_carts.device_type,
+  abandoned_carts.city,
+  abandoned_carts.country,
+  abandoned_carts.created_at,
+  abandoned_carts.updated_at
 FROM abandoned_carts
-WHERE created_at >= NOW() - INTERVAL '90 days'
-  AND customer_email IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM crm_leads WHERE email = abandoned_carts.customer_email)
-ORDER BY customer_email, created_at DESC;
+WHERE abandoned_carts.created_at >= NOW() - INTERVAL '90 days'
+  AND abandoned_carts.customer_email IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM crm_leads WHERE crm_leads.email = abandoned_carts.customer_email)
+ORDER BY customer_email, abandoned_carts.created_at DESC;
 
 -- ================================================================
 -- VERIFICAÇÃO
