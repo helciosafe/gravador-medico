@@ -77,7 +77,7 @@ export default function AdminDashboard() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                   <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `R$${val}`} />
-                  <Tooltip formatter={(val: number) => `R$ ${val.toFixed(2)}`} />
+                  <Tooltip formatter={(val: number | undefined) => val ? `R$ ${val.toFixed(2)}` : 'R$ 0,00'} />
                   <Area type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -92,8 +92,12 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ConversionFunnel data={funnelData} />
-        <OperationalHealth />
+        {/* ConversionFunnel temporariamente removido até termos dados do funil */}
+        <OperationalHealth data={{ 
+          recoverableCarts: { count: 0, totalValue: 0, last24h: 0 },
+          failedPayments: { count: 0, totalValue: 0, reasons: [] },
+          chargebacks: { count: 0, totalValue: 0 }
+        }} />
       </div>
     </div>
   )
