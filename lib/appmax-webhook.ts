@@ -8,6 +8,7 @@ interface AppmaxWebhookResult {
 }
 
 const EVENT_STATUS_MAP: Record<string, { status: string; failure_reason?: string }> = {
+  // Eventos da API
   'order.approved': { status: 'approved' },
   'order.paid': { status: 'paid' },
   'order.pending': { status: 'pending' },
@@ -16,25 +17,66 @@ const EVENT_STATUS_MAP: Record<string, { status: string; failure_reason?: string
   'order.refunded': { status: 'refunded', failure_reason: 'Estornado' },
   'pix.generated': { status: 'pending' },
   'pix.paid': { status: 'paid' },
-  'pix.expired': { status: 'expired', failure_reason: 'PIX Expirado' },
-  // Eventos Appmax em PT-BR
-  'Pedido aprovado': { status: 'approved' },
-  'Pedido autorizado': { status: 'approved' },
-  'Pedido pago': { status: 'paid' },
-  'Boleto Gerado': { status: 'pending' },
-  'Pix Gerado': { status: 'pending' },
-  'Pix Pago': { status: 'paid' },
-  'Pix Expirado': { status: 'expired', failure_reason: 'PIX Expirado' },
-  'Pedido pendente de integracao': { status: 'pending' },
-  'Pedido integrado': { status: 'approved' },
-  'Pedido com boleto vencido': { status: 'expired', failure_reason: 'Boleto Vencido' },
-  'Pedido Estornado': { status: 'refunded', failure_reason: 'Estornado' },
-  'Pedido Chargeback em Tratamento': { status: 'chargeback', failure_reason: 'Chargeback em análise' },
-  'Pedido Chargeback Ganho': { status: 'approved' }
+  'pix.expired': { status: 'expired', failure_reason: 'PIX expirado' },
+  // Eventos Appmax (normalizados)
+  'pedido aprovado': { status: 'approved' },
+  'pedido autorizado': { status: 'approved' },
+  'pedido pago': { status: 'paid' },
+  'pedido pendente de integracao': { status: 'pending' },
+  'pedido integrado': { status: 'approved' },
+  'pedido autorizado com atraso (60min)': { status: 'approved', failure_reason: 'Autorizado com atraso (60min)' },
+  'pagamento nao autorizado': { status: 'refused', failure_reason: 'Pagamento nao autorizado' },
+  'pagamento nao autorizado com atraso (60min)': { status: 'refused', failure_reason: 'Pagamento nao autorizado (60min)' },
+  'boleto gerado': { status: 'pending' },
+  'pedido com boleto vencido': { status: 'expired', failure_reason: 'Boleto vencido' },
+  'pix gerado': { status: 'pending' },
+  'pix pago': { status: 'paid' },
+  'pix expirado': { status: 'expired', failure_reason: 'PIX expirado' },
+  'pedido estornado': { status: 'refunded', failure_reason: 'Estornado' },
+  'pedido chargeback em tratamento': { status: 'chargeback', failure_reason: 'Chargeback em analise' },
+  'pedido chargeback ganho': { status: 'approved' },
+  'upsell pago': { status: 'paid' }
 }
 
 const SUCCESS_STATUSES = new Set(['approved', 'paid', 'completed'])
 const FAILED_STATUSES = new Set(['refused', 'rejected', 'cancelled', 'expired', 'failed', 'chargeback'])
+
+const STATUS_ALIASES: Record<string, { status: string; failure_reason?: string }> = {
+  approved: { status: 'approved' },
+  paid: { status: 'paid' },
+  completed: { status: 'completed' },
+  aprovado: { status: 'approved' },
+  pago: { status: 'paid' },
+  autorizado: { status: 'approved' },
+  pending: { status: 'pending' },
+  pendente: { status: 'pending' },
+  processing: { status: 'pending' },
+  refused: { status: 'refused', failure_reason: 'Pagamento recusado' },
+  rejected: { status: 'refused', failure_reason: 'Pagamento recusado' },
+  failed: { status: 'refused', failure_reason: 'Pagamento recusado' },
+  'nao autorizado': { status: 'refused', failure_reason: 'Pagamento nao autorizado' },
+  payment_not_authorized: { status: 'refused', failure_reason: 'Pagamento nao autorizado' },
+  cancelled: { status: 'cancelled', failure_reason: 'Pedido cancelado' },
+  canceled: { status: 'cancelled', failure_reason: 'Pedido cancelado' },
+  cancelado: { status: 'cancelled', failure_reason: 'Pedido cancelado' },
+  expired: { status: 'expired', failure_reason: 'Expirado' },
+  expirado: { status: 'expired', failure_reason: 'Expirado' },
+  'boleto vencido': { status: 'expired', failure_reason: 'Boleto vencido' },
+  'pix expirado': { status: 'expired', failure_reason: 'PIX expirado' },
+  refunded: { status: 'refunded', failure_reason: 'Estornado' },
+  estornado: { status: 'refunded', failure_reason: 'Estornado' },
+  chargeback: { status: 'chargeback', failure_reason: 'Chargeback' }
+}
+
+function normalizeEventName(value?: string) {
+  if (!value) return ''
+  return value
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
 
 function normalizeSignature(signature: string) {
   return signature.startsWith('sha256=') ? signature.slice(7) : signature
@@ -50,38 +92,21 @@ function safeCompareSignature(a: string, b: string) {
 }
 
 function resolveStatus(event?: string, status?: string) {
-  if (event && EVENT_STATUS_MAP[event]) {
-    return EVENT_STATUS_MAP[event]
+  const normalizedEvent = normalizeEventName(event)
+  if (normalizedEvent && EVENT_STATUS_MAP[normalizedEvent]) {
+    return EVENT_STATUS_MAP[normalizedEvent]
   }
 
   if (!status) {
     return null
   }
 
-  const normalized = status.toLowerCase()
-  switch (normalized) {
-    case 'approved':
-    case 'paid':
-    case 'completed':
-      return { status: normalized }
-    case 'pending':
-    case 'processing':
-      return { status: 'pending' }
-    case 'refused':
-    case 'rejected':
-    case 'failed':
-      return { status: 'refused', failure_reason: 'Pedido recusado' }
-    case 'cancelled':
-    case 'canceled':
-      return { status: 'cancelled', failure_reason: 'Pedido cancelado' }
-    case 'refunded':
-    case 'chargeback':
-      return { status: normalized, failure_reason: 'Estornado/Chargeback' }
-    case 'expired':
-      return { status: 'expired', failure_reason: 'Expirado' }
-    default:
-      return { status: normalized }
+  const normalized = normalizeEventName(status)
+  if (STATUS_ALIASES[normalized]) {
+    return STATUS_ALIASES[normalized]
   }
+
+  return { status: normalized }
 }
 
 async function logWebhook(params: {

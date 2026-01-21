@@ -114,7 +114,7 @@ export default function SalesPage() {
           case 'pending':
             return ['pending', 'processing'].includes(sale.status)
           case 'failed':
-            return ['canceled', 'cancelado', 'refused', 'failed', 'denied', 'expired'].includes(sale.status)
+            return ['canceled', 'cancelado', 'cancelled', 'refused', 'rejected', 'failed', 'denied', 'expired', 'chargeback'].includes(sale.status)
           case 'refunded':
             return ['refunded', 'reversed'].includes(sale.status)
           default:
@@ -195,7 +195,7 @@ export default function SalesPage() {
     all: sales.length,
     paid: sales.filter(s => ['paid', 'approved'].includes(s.status)).length,
     pending: sales.filter(s => ['pending', 'processing'].includes(s.status)).length,
-    failed: sales.filter(s => ['canceled', 'cancelado', 'refused', 'failed', 'denied', 'expired'].includes(s.status)).length,
+    failed: sales.filter(s => ['canceled', 'cancelado', 'cancelled', 'refused', 'rejected', 'failed', 'denied', 'expired', 'chargeback'].includes(s.status)).length,
     refunded: sales.filter(s => ['refunded', 'reversed'].includes(s.status)).length,
   }
 

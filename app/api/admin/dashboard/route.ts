@@ -4,7 +4,8 @@ import { requireAdmin } from '@/lib/auth-server'
 import {
   fetchDashboardMetrics,
   fetchSalesChartData,
-  fetchFunnelData
+  fetchFunnelData,
+  fetchOperationalHealth
 } from '@/lib/dashboard-queries'
 
 export async function GET(request: NextRequest) {
@@ -14,19 +15,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [metricsRes, chartRes, funnelRes] = await Promise.all([
+    const [metricsRes, chartRes, funnelRes, operationalRes] = await Promise.all([
       fetchDashboardMetrics(supabaseAdmin),
       fetchSalesChartData(supabaseAdmin),
-      fetchFunnelData(supabaseAdmin)
+      fetchFunnelData(supabaseAdmin),
+      fetchOperationalHealth(supabaseAdmin)
     ])
 
     return NextResponse.json({
       metrics: metricsRes.data || null,
       chartData: chartRes.data || [],
       funnelData: funnelRes || [],
+      operationalHealth: operationalRes.data || null,
       errors: {
         metrics: metricsRes.error ? 'Erro ao buscar métricas' : null,
-        chart: chartRes.error ? 'Erro ao buscar gráfico' : null
+        chart: chartRes.error ? 'Erro ao buscar gráfico' : null,
+        operational: operationalRes.error ? 'Erro ao buscar saude operacional' : null
       }
     })
   } catch (error) {

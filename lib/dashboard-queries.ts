@@ -266,6 +266,109 @@ export async function fetchDashboardMetrics(
 }
 
 // ========================================
+// 1.1 FETCH: Saude Operacional
+// ========================================
+export async function fetchOperationalHealth(
+  supabase: SupabaseClient
+): Promise<{
+  data: {
+    recoverableCarts: { count: number; totalValue: number; last24h: number }
+    failedPayments: { count: number; totalValue: number; reasons: { reason: string; count: number }[] }
+    chargebacks: { count: number; totalValue: number }
+  }
+  error: any
+}> {
+  const empty = {
+    recoverableCarts: { count: 0, totalValue: 0, last24h: 0 },
+    failedPayments: { count: 0, totalValue: 0, reasons: [] },
+    chargebacks: { count: 0, totalValue: 0 }
+  }
+
+  try {
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+    const failedStatuses = [
+      'refused',
+      'rejected',
+      'failed',
+      'expired',
+      'cancelled',
+      'cancelado',
+      'canceled',
+      'chargeback'
+    ]
+
+    const { data: failedRows, error: failedError } = await supabase
+      .from('checkout_attempts')
+      .select('status, total_amount, cart_total, metadata, created_at')
+      .gte('created_at', since)
+      .in('status', failedStatuses)
+
+    if (failedError) throw failedError
+
+    const failedPayments = {
+      count: 0,
+      totalValue: 0,
+      reasons: [] as { reason: string; count: number }[]
+    }
+    const reasonMap = new Map<string, number>()
+    const chargebacks = { count: 0, totalValue: 0 }
+
+    for (const row of failedRows || []) {
+      const amount = Number(row.total_amount || row.cart_total || 0)
+      failedPayments.count += 1
+      failedPayments.totalValue += Number.isFinite(amount) ? amount : 0
+
+      const reason = row?.metadata?.failure_reason || row.status || 'recusado'
+      reasonMap.set(reason, (reasonMap.get(reason) || 0) + 1)
+
+      if (row.status === 'chargeback') {
+        chargebacks.count += 1
+        chargebacks.totalValue += Number.isFinite(amount) ? amount : 0
+      }
+    }
+
+    failedPayments.reasons = Array.from(reasonMap.entries())
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count)
+
+    let recoverableCarts = { count: 0, totalValue: 0, last24h: 0 }
+    try {
+      const { data: cartRows, error: cartError } = await supabase
+        .from('abandoned_carts')
+        .select('cart_value, created_at, status')
+        .eq('status', 'abandoned')
+        .gte('created_at', since)
+
+      if (!cartError && cartRows) {
+        let totalValue = 0
+        let totalLast24h = 0
+        for (const row of cartRows) {
+          const value = Number(row.cart_value || 0)
+          totalValue += Number.isFinite(value) ? value : 0
+          if (row.created_at && row.created_at >= last24h) {
+            totalLast24h += Number.isFinite(value) ? value : 0
+          }
+        }
+        recoverableCarts = {
+          count: cartRows.length,
+          totalValue,
+          last24h: totalLast24h
+        }
+      }
+    } catch (error) {
+      // Tabela pode nao existir; mantenha zeros.
+    }
+
+    return { data: { recoverableCarts, failedPayments, chargebacks }, error: null }
+  } catch (error) {
+    console.error('❌ Erro ao buscar saude operacional:', error)
+    return { data: empty, error }
+  }
+}
+
+// ========================================
 // 2. FETCH: Top Produtos (USANDO VIEW)
 // ========================================
 /**
@@ -509,4 +612,3 @@ export async function fetchFunnelData(
     return []
   }
 }
-

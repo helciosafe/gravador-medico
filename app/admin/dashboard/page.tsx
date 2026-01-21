@@ -13,6 +13,7 @@ export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<any | null>(null)
   const [chartData, setChartData] = useState<any[]>([])
   const [funnelData, setFunnelData] = useState<any[]>([])
+  const [operationalHealth, setOperationalHealth] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -36,6 +37,7 @@ export default function AdminDashboard() {
       setMetrics(result.metrics || null)
       setChartData(result.chartData || [])
       setFunnelData(result.funnelData || [])
+      setOperationalHealth(result.operationalHealth || null)
     } catch (err) {
       console.error('Erro no dashboard:', err)
     } finally {
@@ -84,7 +86,7 @@ export default function AdminDashboard() {
       <BigNumbers metrics={metrics} loading={loading} />
 
       {/* Saúde Operacional */}
-      <OperationalHealth data={{ 
+      <OperationalHealth data={operationalHealth || { 
         recoverableCarts: { count: 0, totalValue: 0, last24h: 0 },
         failedPayments: { count: 0, totalValue: 0, reasons: [] },
         chargebacks: { count: 0, totalValue: 0 }
