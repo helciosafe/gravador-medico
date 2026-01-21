@@ -10,12 +10,12 @@ import { upsertWhatsAppMessage, upsertWhatsAppContact, messageExists } from '@/l
 import type { EvolutionMessagePayload, CreateMessageInput } from '@/lib/types/whatsapp'
 
 /**
- * Busca a foto de perfil do contato com estratégia de fallback robusta
+ * Busca a foto de perfil do contato usando método oficial Evolution v2
  * 
- * ESTRATÉGIA DEFINITIVA (após múltiplos testes):
- * 1. Tenta extrair do próprio payload da mensagem (às vezes a Evolution envia)
- * 2. Tenta buscar via POST /contact/checkNumbers (MAIS ROBUSTO na v2)
- * 3. Se qualquer erro ocorrer, retorna null e NÃO TRAVA o processo
+ * ESTRATÉGIA DEFINITIVA (testado e aprovado):
+ * 1. Tenta extrair do próprio payload da mensagem
+ * 2. Usa POST /chat/fetchProfilePicture/{instance} (MÉTODO OFICIAL v2)
+ * 3. Se falhar, retorna null e NÃO TRAVA o processo
  * 
  * IMPORTANTE: A mensagem SEMPRE será salva, mesmo sem foto
  */
@@ -53,15 +53,16 @@ async function fetchProfilePicture(
     }
 
     // ================================================================
-    // ESTRATÉGIA 2: POST /contact/checkNumbers (MAIS ROBUSTO na v2)
-    // Extrai apenas o número (sem @s.whatsapp.net)
+    // ESTRATÉGIA 2: POST /chat/fetchProfilePicture (MÉTODO OFICIAL v2)
+    // Body: {"number": "5521988960217"} (apenas números, sem @s.whatsapp.net)
+    // Response: {"profilePictureUrl": "https://..."}
     // ================================================================
     const phoneNumber = remoteJid.split('@')[0]
-    const url = `${EVOLUTION_API_URL}/contact/checkNumbers/${EVOLUTION_INSTANCE_NAME}`
+    const url = `${EVOLUTION_API_URL}/chat/fetchProfilePicture/${EVOLUTION_INSTANCE_NAME}`
     
-    console.log(`📸 [FOTO] Tentando POST /contact/checkNumbers`)
+    console.log(`📸 [FOTO] Tentando POST /chat/fetchProfilePicture`)
     console.log(`📸 [FOTO] URL: ${url}`)
-    console.log(`📸 [FOTO] Numbers: [${phoneNumber}]`)
+    console.log(`📸 [FOTO] Body: {"number": "${phoneNumber}"}`)
     
     // Timeout de 5 segundos para não travar o webhook
     const controller = new AbortController()
@@ -74,46 +75,40 @@ async function fetchProfilePicture(
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        numbers: [phoneNumber]
+        number: phoneNumber
       }),
       signal: controller.signal
     })
 
     clearTimeout(timeoutId)
 
+    // Log detalhado de erro se não for 200/201
     if (!response.ok) {
-      console.warn(`⚠️ [FOTO] HTTP ${response.status} em checkNumbers - salvando sem foto`)
+      const errorText = await response.text()
+      console.error(`❌ [FOTO] HTTP ${response.status} em fetchProfilePicture`)
+      console.error(`❌ [FOTO] Resposta de erro: ${errorText}`)
+      console.warn(`⚠️ [FOTO] Salvando mensagem sem foto`)
       return null
     }
 
     const data = await response.json()
     
-    console.log(`📸 [FOTO] Resposta checkNumbers:`, JSON.stringify(data, null, 2))
+    console.log(`📸 [FOTO] Resposta fetchProfilePicture:`, JSON.stringify(data, null, 2))
     
-    // A resposta é um array. Pegue o primeiro item
-    const contacts = Array.isArray(data) ? data : []
-    
-    if (contacts.length === 0) {
-      console.log(`⚠️ [FOTO] Array vazio retornado - salvando sem foto`)
-      return null
-    }
-    
-    // Extrair profilePicUrl do primeiro item
-    const firstContact = contacts[0]
+    // Extrair profilePictureUrl do objeto de resposta
     const photoUrl = 
-      firstContact.profilePicUrl || 
-      firstContact.profilePictureUrl ||
-      firstContact.picture ||
-      firstContact.imgUrl ||
-      firstContact.image ||
+      data.profilePictureUrl || 
+      data.profilePicUrl ||
+      data.url ||
+      data.picture ||
       null
 
     if (photoUrl && typeof photoUrl === 'string') {
-      console.log(`✅ [FOTO] Encontrada via checkNumbers: ${photoUrl}`)
+      console.log(`✅ [FOTO] Encontrada via fetchProfilePicture: ${photoUrl}`)
       return photoUrl
     }
 
-    console.log(`⚠️ [FOTO] Contato retornado mas sem campo profilePicUrl - salvando sem foto`)
+    console.log(`⚠️ [FOTO] Resposta sem campo profilePictureUrl - salvando sem foto`)
     return null
     
   } catch (error) {

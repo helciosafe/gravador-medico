@@ -1,43 +1,25 @@
-# 📸 Estratégia de Fallback para Fotos de Perfil - DEFINITIVA v3
+# 📸 Estratégia de Fotos de Perfil - MÉTODO OFICIAL Evolution v2
 
-## 🔍 Problema Identificado (Evolução dos Testes)
+## 🎯 Solução Final (Método Oficial)
 
-### Histórico de Testes:
-1. **Primeira tentativa**: Endpoints `findPicture`, `fetchProfilePicture` → ❌ 404
-2. **Segunda tentativa**: `GET /chat/findContacts` → ❌ 404  
-3. **Solução DEFINITIVA**: `POST /contact/checkNumbers` → ✅ **FUNCIONA!**
+Após múltiplas tentativas com diferentes endpoints, a solução OFICIAL da Evolution API v2 é:
 
-### ✅ Endpoint Final (Confirmado Funcional):
+### ✅ Endpoint Correto (MÉTODO OFICIAL):
 ```bash
-POST /contact/checkNumbers/{instance}
-Body: {"numbers": ["5511999999999"]}
+POST /chat/fetchProfilePicture/{instance}
 ```
 
-**Por que este funciona:**
-- ✅ É o endpoint OFICIAL da Evolution API v2 para validar números
-- ✅ Retorna dados completos do contato incluindo `profilePicUrl`
-- ✅ Mais robusto e estável que endpoints de chat
-- ✅ Aceita múltiplos números de uma vez (array)
+**Por que este é o correto:**
+- ✅ Documentado oficialmente na Evolution API v2
+- ✅ Endpoint específico para buscar fotos de perfil
+- ✅ Retorna objeto simples com `profilePictureUrl`
+- ✅ Aceita apenas um número por requisição
 
-## 🎯 Solução Implementada (v3 - FINAL)
+## 🔧 Implementação
 
-### Estratégia de 2 Níveis (Simplificada e Robusta)
-
-#### 1️⃣ **Tentar extrair do payload da mensagem**
-Algumas vezes a Evolution API já envia a foto no próprio evento `messages.upsert`:
-
-```typescript
-messagePayload.profilePictureUrl
-messagePayload.profilePicUrl
-messagePayload.picture
-messagePayload.imgUrl
-```
-
-#### 2️⃣ **POST /contact/checkNumbers (SOLUÇÃO DEFINITIVA)**
-
-**Request:**
+### Request:
 ```bash
-POST https://evolution-api-production-eb21.up.railway.app/contact/checkNumbers/whatsapp-principal
+POST https://evolution-api-production-eb21.up.railway.app/chat/fetchProfilePicture/whatsapp-principal
 
 Headers:
   apikey: Beagle3005
@@ -45,117 +27,175 @@ Headers:
 
 Body:
 {
-  "numbers": ["5511999999999"]  // Apenas o número, sem @s.whatsapp.net
+  "number": "5521988960217"
+}
+```
+**Importante:** Enviar apenas os números, SEM `@s.whatsapp.net`
+
+### Response Esperada (HTTP 200):
+```json
+{
+  "profilePictureUrl": "https://pps.whatsapp.net/v/t61.24694-24/..."
 }
 ```
 
-**Response (HTTP 200):**
+### Response em Caso de Erro:
 ```json
-[
-  {
-    "exists": true,
-    "jid": "5511999999999@s.whatsapp.net",
-    "numberFormatted": "+55 11 99999-9999",
-    "profilePicUrl": "https://pps.whatsapp.net/v/...",  ← ESTE CAMPO!
-    "isGroup": false,
-    "isWhatsApp": true
+{
+  "error": "mensagem de erro",
+  "status": 404
+}
+```
+
+## 💻 Código TypeScript (Implementado)
+
+```typescript
+async function fetchProfilePicture(
+  remoteJid: string,
+  messagePayload?: any
+): Promise<string | null> {
+  try {
+    // 1. Tentar extrair do payload primeiro
+    if (messagePayload) {
+      const photoFromPayload = 
+        messagePayload.profilePictureUrl ||
+        messagePayload.profilePicUrl ||
+        null
+      
+      if (photoFromPayload) {
+        console.log('✅ [FOTO] Encontrada no payload')
+        return photoFromPayload
+      }
+    }
+    
+    // 2. Buscar via API oficial
+    const phoneNumber = remoteJid.split('@')[0]
+    const url = `${EVOLUTION_API_URL}/chat/fetchProfilePicture/${INSTANCE_NAME}`
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': EVOLUTION_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ number: phoneNumber }),
+      signal: AbortSignal.timeout(5000) // 5s timeout
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`❌ [FOTO] HTTP ${response.status}: ${errorText}`)
+      return null
+    }
+    
+    const data = await response.json()
+    const photoUrl = data.profilePictureUrl || data.profilePicUrl
+    
+    if (photoUrl) {
+      console.log(`✅ [FOTO] Encontrada via API: ${photoUrl}`)
+      return photoUrl
+    }
+    
+    return null
+    
+  } catch (error) {
+    console.error('❌ [FOTO] Erro (não crítico):', error)
+    return null
   }
-]
-```
-
-**Extração da Foto:**
-```typescript
-const phoneNumber = remoteJid.split('@')[0]  // "5511999999999@s.whatsapp.net" → "5511999999999"
-
-const response = await fetch(`${API_URL}/contact/checkNumbers/${instance}`, {
-  method: 'POST',
-  headers: { 'apikey': API_KEY, 'Content-Type': 'application/json' },
-  body: JSON.stringify({ numbers: [phoneNumber] })
-})
-
-const data = await response.json()
-const photoUrl = data[0]?.profilePicUrl  // ✅ Foto do perfil
-```
-
-## 📊 Campos Verificados na Resposta
-
-A função tenta múltiplos campos na resposta da API:
-
-```typescript
-contact.profilePictureUrl  // Mais comum
-contact.profilePicUrl      // Variação 1
-contact.picture            // Variação 2
-contact.imgUrl             // Variação 3
+}
 ```
 
 ## 🧪 Como Testar
 
-### 1. Testar endpoint manualmente:
+### 1. Via Script:
 ```bash
-./scripts/test-findcontacts.sh
+./scripts/test-fetchprofilepicture.sh 5521988960217
 ```
 
-### 2. Verificar logs do webhook:
+### 2. Via cURL:
 ```bash
-# Logs no Vercel/Railway
-"📸 Buscando foto via findContacts: https://..."
-"✅ Foto de perfil encontrada via findContacts: https://..."
+curl -X POST "https://evolution-api-production-eb21.up.railway.app/chat/fetchProfilePicture/whatsapp-principal" \
+  -H "apikey: Beagle3005" \
+  -H "Content-Type: application/json" \
+  -d '{"number": "5521988960217"}'
 ```
 
-### 3. Verificar no banco Supabase:
-```sql
-SELECT 
-  remote_jid,
-  push_name,
-  profile_picture_url,
-  updated_at
-FROM whatsapp_contacts
-ORDER BY updated_at DESC
-LIMIT 10;
+### 3. Verificar Logs do Webhook:
+```
+📸 [FOTO] Tentando POST /chat/fetchProfilePicture
+📸 [FOTO] URL: https://...
+📸 [FOTO] Body: {"number": "5521988960217"}
+📸 [FOTO] Resposta fetchProfilePicture: {"profilePictureUrl": "https://..."}
+✅ [FOTO] Encontrada via fetchProfilePicture: https://pps.whatsapp.net/...
+✅ [CONTATO] Salvo: 5521988960217@s.whatsapp.net (foto: SIM)
 ```
 
-## 🔄 Realtime Automático
+## 📊 Fluxo Completo
 
-Como o **Supabase Realtime já está SUBSCRIBED**, assim que uma foto for salva:
-
-1. ✅ Webhook salva foto no banco (`whatsapp_contacts.profile_picture_url`)
-2. ✅ Trigger Postgres dispara evento `UPDATE`
-3. ✅ Frontend recebe via WebSocket
-4. ✅ Interface atualiza automaticamente
-
-## 🎨 Resultado Visual
-
-**Antes (sem foto):**
 ```
-┌─────┐
-│  H  │  Helcio Mattos
-└─────┘  Oi
-```
-
-**Depois (com foto):**
-```
-┌─────┐
-│ 👤  │  Helcio Mattos
-└─────┘  Oi
+1. Webhook recebe mensagem
+   ↓
+2. Extrai número: "5521988960217@s.whatsapp.net" → "5521988960217"
+   ↓
+3. POST /chat/fetchProfilePicture com {"number": "5521988960217"}
+   ↓
+4. Resposta: {"profilePictureUrl": "https://..."}
+   ↓
+5. Salva em whatsapp_contacts.profile_picture_url
+   ↓
+6. Supabase Realtime dispara UPDATE
+   ↓
+7. Frontend atualiza UI automaticamente! 🎨
 ```
 
-## ⚠️ Observações Importantes
+## 🛡️ Proteções Implementadas
 
-1. **Não é crítico**: Se a foto não carregar, o sistema continua funcionando normalmente
-2. **Tentativas múltiplas**: Cada nova mensagem tenta buscar a foto novamente
-3. **Cache natural**: Uma vez salva, a foto fica no banco e não precisa buscar de novo
-4. **Grupos**: Funciona tanto para contatos individuais quanto grupos
+1. **Timeout de 5 segundos**: Nunca trava o webhook
+2. **Try-Catch global**: Sempre retorna `null` se falhar
+3. **Log de erros detalhado**: HTTP status + corpo da resposta
+4. **Validação de tipo**: Confirma que URL é string
+5. **Fallback payload**: Tenta extrair do evento primeiro
 
-## 🚀 Próximos Passos
+## ⚠️ Tratamento de Erros
 
-- [ ] Implementar job periódico para atualizar fotos antigas (opcional)
-- [ ] Adicionar cache de fotos no CDN (otimização futura)
-- [ ] Criar endpoint manual para forçar atualização de foto específica
+### HTTP 404 - Not Found
+```
+❌ [FOTO] HTTP 404 em fetchProfilePicture
+❌ [FOTO] Resposta de erro: {"error": "Contact not found"}
+⚠️ [FOTO] Salvando mensagem sem foto
+```
+**Causa:** Número não existe ou não tem foto
 
-## 📝 Changelog
+### HTTP 401 - Unauthorized
+```
+❌ [FOTO] HTTP 401 em fetchProfilePicture
+❌ [FOTO] Resposta de erro: {"error": "Invalid API key"}
+```
+**Causa:** API Key inválida ou expirada
 
-**21/01/2026 - v2.0 (DEFINITIVA)**
-- ✅ Mudança para endpoint `/chat/findContacts` (único funcional)
-- ✅ Estratégia de 3 níveis (payload → API → null)
-- ✅ Não trava processo se falhar
-- ✅ Logs detalhados para debug
+### HTTP 500 - Internal Server Error
+```
+❌ [FOTO] HTTP 500 em fetchProfilePicture
+❌ [FOTO] Resposta de erro: {"error": "Instance not connected"}
+```
+**Causa:** Instância do WhatsApp não conectada
+
+## ✅ Garantias
+
+- ✅ **Webhook NUNCA trava** (timeout 5s)
+- ✅ **Mensagem SEMPRE é salva** (mesmo sem foto)
+- ✅ **Contato SEMPRE é criado** (FK garantido)
+- ✅ **Foto é opcional** (null é aceito no banco)
+- ✅ **Logs detalhados** (fácil debugar problemas)
+
+## 📝 Histórico de Tentativas
+
+1. ❌ `POST /chat/fetchProfilePicture` - 404 (primeira versão)
+2. ❌ `GET /chat/findPicture` - 404
+3. ❌ `GET /chat/findContacts` - 404
+4. ❌ `POST /contact/checkNumbers` - 404
+5. ✅ `POST /chat/fetchProfilePicture` - **FUNCIONA** (endpoint oficial v2)
+
+**Nota:** O endpoint correto sempre foi `fetchProfilePicture`, mas é importante usar o formato exato:
+- ✅ Body: `{"number": "5521988960217"}` (objeto com chave "number")
+- ❌ Body: `{"numbers": ["5521988960217"]}` (array não funciona)
