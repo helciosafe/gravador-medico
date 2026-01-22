@@ -206,10 +206,10 @@
   }
 }
 
-/* Custom scrollbar - Elegant dark style */
+/* Custom scrollbar - Minimalista e escuro */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -217,15 +217,21 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 10px;
-  border: 2px solid transparent;
-  background-clip: content-box;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.6);
-  background-clip: content-box;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Scrollbar para tema escuro do WhatsApp */
+.bg-\[\#111b21\] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.bg-\[\#111b21\] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* Selection */
