@@ -22,17 +22,8 @@ import type { EvolutionMessagePayload, CreateMessageInput } from '@/lib/types/wh
 // Previne processamento duplicado de webhooks (Evolution API pode reenviar)
 const messageCache = new Map<string, number>()
 
-// Limpar cache a cada 5 minutos (remove mensagens antigas)
-setInterval(() => {
-  const now = Date.now()
-  const expireTime = 60000 // 60 segundos
-  
-  for (const [messageId, timestamp] of messageCache.entries()) {
-    if (now - timestamp > expireTime) {
-      messageCache.delete(messageId)
-    }
-  }
-}, 5 * 60 * 1000)
+// ⚠️ IMPORTANTE: Em serverless, não usar setInterval
+// A limpeza é feita individualmente por setTimeout em cada mensagem
 
 // ================================================================
 // Mapear status da Evolution API para nosso schema
@@ -403,6 +394,9 @@ export async function POST(request: NextRequest) {
     const payload: EvolutionMessagePayload = await request.json()
     const eventName = (payload as any)?.event?.toLowerCase?.() || ''
 
+    // Log simples de entrada
+    console.log(`📥 Webhook: ${eventName}`)
+
     // ================================================================
     // PROTEÇÃO ANTI-DUPLICATA: Verificar cache ANTES de processar
     // ================================================================
@@ -412,27 +406,22 @@ export async function POST(request: NextRequest) {
       const cachedTime = messageCache.get(messageId)!
       const elapsedSeconds = Math.floor((Date.now() - cachedTime) / 1000)
       
-      console.log(`⚠️ [DUPLICATA] Mensagem ignorada: ${messageId} (recebida há ${elapsedSeconds}s)`)
+      console.log(`⚠️ [DUPLICATA] ${messageId.substring(0, 20)}... (${elapsedSeconds}s)`)
       
       return NextResponse.json({ 
         success: true, 
         status: 'ignored', 
-        reason: 'duplicate',
-        messageId,
-        elapsedSeconds
+        reason: 'duplicate'
       })
     }
 
     // Adicionar ao cache se for mensagem nova (apenas para messages.upsert)
     if (messageId && (eventName === 'messages.upsert' || eventName === 'messages_upsert')) {
       messageCache.set(messageId, Date.now())
-      console.log(`✅ [CACHE] Mensagem adicionada: ${messageId} (cache size: ${messageCache.size})`)
       
       // Auto-limpeza individual após 60 segundos
       setTimeout(() => {
-        if (messageCache.delete(messageId)) {
-          console.log(`🗑️ [CACHE] Mensagem removida: ${messageId}`)
-        }
+        messageCache.delete(messageId)
       }, 60000)
     }
 
@@ -496,16 +485,6 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // ⚡ Apenas para mensagens UPSERT: extrair dados e logar
-    const dataKey = (payload as any)?.data?.key
-    
-    console.log('📥 Nova mensagem:', {
-      event: payload.event,
-      remoteJid: dataKey?.remoteJid,
-      fromMe: dataKey?.fromMe,
-      messageId: dataKey?.id
-    })
-
     const { key, message, messageType, messageTimestamp, pushName, status } = payload.data
     const normalizedRemoteJid = normalizeRemoteJid(
       key.remoteJid,
@@ -527,22 +506,15 @@ export async function POST(request: NextRequest) {
 
     // ================================================================
     // PASSO 1: Buscar foto de perfil (NÃO CRÍTICO - nunca trava)
-    // Usa endpoint /chat/findContacts confirmado via teste curl
-    // IMPORTANTE: Passa participant para identificar remetente em grupos
     // ================================================================
     const profilePictureUrl = await fetchProfilePicture(
       normalizedRemoteJid, 
-      key.participant,  // Para mensagens de grupo
+      key.participant,
       payload.data
     )
-    
-    if (profilePictureUrl) {
-      console.log(`✅ Foto obtida: ${profilePictureUrl.substring(0, 50)}...`)
-    }
 
     // ================================================================
     // PASSO 2: UPSERT do contato PRIMEIRO (resolver FK constraint)
-    // GARANTIA: Sempre salva o contato, mesmo sem foto
     // ================================================================
     try {
       await upsertWhatsAppContact({
@@ -551,7 +523,6 @@ export async function POST(request: NextRequest) {
         profile_picture_url: profilePictureUrl || undefined,
         is_group: normalizedRemoteJid.includes('@g.us')
       })
-      console.log(`✅ Contato salvo: ${normalizedRemoteJid}`)
     } catch (contactError) {
       console.error('❌ Erro ao salvar contato:', contactError)
       throw contactError
