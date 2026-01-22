@@ -63,11 +63,11 @@ import {
 import Link from "next/link"
 import Image from "next/image"
 
-// Componente de partículas flutuantes
+// Componente de partículas flutuantes (OTIMIZADO)
 const FloatingParticles = () => {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {[...Array(20)].map((_, i) => (
+      {[...Array(5)].map((_, i) => (
         <motion.div
           key={i}
           className="absolute w-2 h-2 bg-brand-400/30 rounded-full"
@@ -192,11 +192,19 @@ export default function LandingPage() {
   }, [])
   
   useEffect(() => {
+    // Throttle mousemove para performance
+    let timeout: NodeJS.Timeout
     const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY })
+      clearTimeout(timeout)
+      timeout = setTimeout(() => {
+        setMousePosition({ x: e.clientX, y: e.clientY })
+      }, 100) // Throttle de 100ms
     }
-    window.addEventListener("mousemove", handleMouseMove)
-    return () => window.removeEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mousemove", handleMouseMove, { passive: true })
+    return () => {
+      clearTimeout(timeout)
+      window.removeEventListener("mousemove", handleMouseMove)
+    }
   }, [])
 
   const onSelect = useCallback(() => {
