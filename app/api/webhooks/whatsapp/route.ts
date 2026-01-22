@@ -56,12 +56,13 @@ async function fetchProfilePicture(
     }
 
     // ================================================================
-    // ESTRATÉGIA 2: GET /chat/findContacts (CONFIRMADO via fetchInstances)
-    // Query: ?number=5521988960217 (apenas número, sem @s.whatsapp.net)
-    // Response: Array com campo profilePicUrl ou profilePictureUrl
+    // ESTRATÉGIA 2: POST /chat/findContacts (VALIDADO via terminal)
+    // Body: {"number": "5521988960217"} (apenas número, sem @s.whatsapp.net)
+    // Response: Array com campo profilePicUrl
     // ================================================================
     const phoneNumber = remoteJid.split('@')[0]  // "5521988960217@s.whatsapp.net" → "5521988960217"
-    const url = `${EVOLUTION_API_URL}/chat/findContacts/${EVOLUTION_INSTANCE_NAME}?number=${phoneNumber}`
+    const url = `${EVOLUTION_API_URL}/chat/findContacts/${EVOLUTION_INSTANCE_NAME}`
+    const requestBody = { number: phoneNumber }
     
     console.log(`📸 [DEBUG FOTO] ===== INÍCIO BUSCA FOTO =====`)
     console.log(`📸 [DEBUG FOTO] EVOLUTION_API_URL: ${EVOLUTION_API_URL}`)
@@ -70,7 +71,8 @@ async function fetchProfilePicture(
     console.log(`📸 [DEBUG FOTO] RemoteJid completo: ${remoteJid}`)
     console.log(`📸 [DEBUG FOTO] Phone number extraído: ${phoneNumber}`)
     console.log(`📸 [DEBUG FOTO] URL Completa: ${url}`)
-    console.log(`📸 [DEBUG FOTO] Método: GET`)
+    console.log(`📸 [DEBUG FOTO] Método: POST`)
+    console.log(`📸 [DEBUG FOTO] Body: ${JSON.stringify(requestBody)}`)
     console.log(`📸 [DEBUG FOTO] ===========================`)
     
     // Timeout de 5 segundos para não travar o webhook
@@ -78,11 +80,12 @@ async function fetchProfilePicture(
     const timeoutId = setTimeout(() => controller.abort(), 5000)
     
     const response = await fetch(url, {
-      method: 'GET',
+      method: 'POST',
       headers: {
         'apikey': EVOLUTION_API_KEY,
         'Content-Type': 'application/json'
       },
+      body: JSON.stringify(requestBody),
       signal: controller.signal
     })
 
