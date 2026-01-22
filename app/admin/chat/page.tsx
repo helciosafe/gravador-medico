@@ -43,18 +43,25 @@ export default function AdminChatPage() {
   // Obter usuário atual
   useEffect(() => {
     const loadUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        router.push('/login')
-        return
-      }
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser()
+        
+        if (error || !user) {
+          console.error('Erro ao obter usuário:', error)
+          router.push('/admin/login')
+          return
+        }
 
-      setCurrentUserId(user.id)
+        console.log('✅ Usuário autenticado:', user.id)
+        setCurrentUserId(user.id)
+      } catch (err) {
+        console.error('Erro ao carregar usuário:', err)
+        router.push('/admin/login')
+      }
     }
 
     loadUser()
-  }, [])
+  }, [router])
 
   // Auto-abrir conversa se vier da notificação
   useEffect(() => {

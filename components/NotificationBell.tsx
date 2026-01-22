@@ -4,7 +4,7 @@
 
 'use client'
 
-import { Bell } from 'lucide-react'
+import { MessageSquare } from 'lucide-react'
 import { useNotifications } from './NotificationProvider'
 import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
@@ -43,7 +43,7 @@ export default function NotificationBell() {
         className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         aria-label="Notificações"
       >
-        <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+        <MessageSquare className="w-5 h-5 text-gray-600 dark:text-gray-300" />
         
         {/* Badge de contador */}
         {unreadCount > 0 && (
@@ -86,7 +86,7 @@ export default function NotificationBell() {
             <div className="flex-1 overflow-y-auto">
               {notifications.length === 0 ? (
                 <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                  <Bell className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-30" />
                   <p className="text-sm">Nenhuma notificação</p>
                 </div>
               ) : (
@@ -109,7 +109,7 @@ export default function NotificationBell() {
                           />
                         ) : (
                           <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-                            <Bell className="w-5 h-5 text-white" />
+                            <MessageSquare className="w-5 h-5 text-white" />
                           </div>
                         )}
 
