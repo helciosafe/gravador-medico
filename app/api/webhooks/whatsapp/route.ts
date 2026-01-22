@@ -10,14 +10,17 @@ import { upsertWhatsAppMessage, upsertWhatsAppContact, messageExists } from '@/l
 import type { EvolutionMessagePayload, CreateMessageInput } from '@/lib/types/whatsapp'
 
 /**
- * Busca a foto de perfil do contato usando método oficial Evolution v2
+ * Busca a foto de perfil do contato usando endpoint correto Evolution v2
  * 
- * ESTRATÉGIA DEFINITIVA (testado e aprovado):
+ * ESTRATÉGIA DEFINITIVA (confirmada via logs Vercel):
  * 1. Tenta extrair do próprio payload da mensagem
- * 2. Usa POST /chat/fetchProfilePicture/{instance} (MÉTODO OFICIAL v2)
+ * 2. Usa POST /chat/findPicture/{instance} (ENDPOINT CORRETO v2)
  * 3. Se falhar, retorna null e NÃO TRAVA o processo
  * 
- * IMPORTANTE: A mensagem SEMPRE será salva, mesmo sem foto
+ * IMPORTANTE: 
+ * - Body usa JID completo (com @s.whatsapp.net)
+ * - Resposta vem no campo "picture" (não "profilePictureUrl")
+ * - Mensagem SEMPRE será salva, mesmo sem foto
  */
 async function fetchProfilePicture(
   remoteJid: string, 
@@ -30,7 +33,7 @@ async function fetchProfilePicture(
     const EVOLUTION_INSTANCE_NAME = process.env.EVOLUTION_INSTANCE_NAME
 
     if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY || !EVOLUTION_INSTANCE_NAME) {
-      console.warn('⚠️ [FOTO] Variáveis de ambiente não configuradas - salvando sem foto')
+      console.warn('⚠️ [DEBUG FOTO] Variáveis de ambiente não configuradas - salvando sem foto')
       return null
     }
 
@@ -47,22 +50,21 @@ async function fetchProfilePicture(
         null
 
       if (photoFromPayload) {
-        console.log(`✅ [FOTO] Encontrada no payload: ${photoFromPayload}`)
+        console.log(`✅ [DEBUG FOTO] Encontrada no payload: ${photoFromPayload}`)
         return photoFromPayload
       }
     }
 
     // ================================================================
-    // ESTRATÉGIA 2: POST /chat/fetchProfilePicture (MÉTODO OFICIAL v2)
-    // Body: {"number": "5521988960217"} (apenas números, sem @s.whatsapp.net)
-    // Response: {"profilePictureUrl": "https://..."}
+    // ESTRATÉGIA 2: POST /chat/findPicture (ENDPOINT CORRETO v2)
+    // Body: {"number": "5521988960217@s.whatsapp.net"} (JID completo)
+    // Response: {"picture": "https://..."}
     // ================================================================
-    const phoneNumber = remoteJid.split('@')[0]
-    const url = `${EVOLUTION_API_URL}/chat/fetchProfilePicture/${EVOLUTION_INSTANCE_NAME}`
+    const url = `${EVOLUTION_API_URL}/chat/findPicture/${EVOLUTION_INSTANCE_NAME}`
     
-    console.log(`📸 [FOTO] Tentando POST /chat/fetchProfilePicture`)
-    console.log(`📸 [FOTO] URL: ${url}`)
-    console.log(`📸 [FOTO] Body: {"number": "${phoneNumber}"}`)
+    console.log(`📸 [DEBUG FOTO] Tentando POST /chat/findPicture`)
+    console.log(`📸 [DEBUG FOTO] URL: ${url}`)
+    console.log(`📸 [DEBUG FOTO] Body: {"number": "${remoteJid}"}`)
     
     // Timeout de 5 segundos para não travar o webhook
     const controller = new AbortController()
@@ -75,7 +77,7 @@ async function fetchProfilePicture(
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        number: phoneNumber
+        number: remoteJid  // JID completo com @s.whatsapp.net
       }),
       signal: controller.signal
     })
@@ -85,38 +87,38 @@ async function fetchProfilePicture(
     // Log detalhado de erro se não for 200/201
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`❌ [FOTO] HTTP ${response.status} em fetchProfilePicture`)
-      console.error(`❌ [FOTO] Resposta de erro: ${errorText}`)
-      console.warn(`⚠️ [FOTO] Salvando mensagem sem foto`)
+      console.error(`❌ [DEBUG FOTO] HTTP ${response.status} em findPicture`)
+      console.error(`❌ [DEBUG FOTO] Resposta de erro: ${errorText}`)
+      console.warn(`⚠️ [DEBUG FOTO] Salvando mensagem sem foto`)
       return null
     }
 
     const data = await response.json()
     
-    console.log(`📸 [FOTO] Resposta fetchProfilePicture:`, JSON.stringify(data, null, 2))
+    console.log(`📸 [DEBUG FOTO] Resposta findPicture:`, JSON.stringify(data, null, 2))
     
-    // Extrair profilePictureUrl do objeto de resposta
+    // Extrair campo "picture" do objeto de resposta (campo oficial da v2)
     const photoUrl = 
+      data.picture ||
       data.profilePictureUrl || 
       data.profilePicUrl ||
       data.url ||
-      data.picture ||
       null
 
     if (photoUrl && typeof photoUrl === 'string') {
-      console.log(`✅ [FOTO] Encontrada via fetchProfilePicture: ${photoUrl}`)
+      console.log(`✅ [DEBUG FOTO] Encontrada via findPicture: ${photoUrl}`)
       return photoUrl
     }
 
-    console.log(`⚠️ [FOTO] Resposta sem campo profilePictureUrl - salvando sem foto`)
+    console.log(`⚠️ [DEBUG FOTO] Resposta sem campo picture - salvando sem foto`)
     return null
     
   } catch (error) {
     // CRÍTICO: Mesmo com erro, retorna null para não travar o webhook
     if (error instanceof Error && error.name === 'AbortError') {
-      console.error('⏱️ [FOTO] Timeout ao buscar foto - continuando sem foto')
+      console.error('⏱️ [DEBUG FOTO] Timeout ao buscar foto - continuando sem foto')
     } else {
-      console.error('❌ [FOTO] Erro ao buscar (não crítico - continuando):', error)
+      console.error('❌ [DEBUG FOTO] Erro ao buscar (não crítico - continuando):', error)
     }
     return null
   }
