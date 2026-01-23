@@ -433,6 +433,10 @@ export async function POST(request: NextRequest) {
     }
 
     const rawKey = extracted.key as any
+    
+    // 🔍 DEBUG: Log completo do rawKey para diagnóstico
+    console.log('🔍 [DEBUG RAW KEY]:', JSON.stringify(rawKey, null, 2))
+    
     const key = {
       id: rawKey?.id,
       remoteJid: rawKey?.remoteJid || rawKey?.remote_jid,
@@ -440,6 +444,10 @@ export async function POST(request: NextRequest) {
       fromMe: rawKey?.fromMe ?? rawKey?.from_me,
       participant: rawKey?.participant || rawKey?.participantJid
     }
+    
+    // 🔍 DEBUG: Log do fromMe especificamente
+    console.log('🔍 [DEBUG fromMe] rawKey.fromMe:', rawKey?.fromMe, 'typeof:', typeof rawKey?.fromMe)
+    console.log('🔍 [DEBUG fromMe] key.fromMe após extração:', key.fromMe, 'typeof:', typeof key.fromMe)
 
     if (!key.remoteJid || !key.id) {
       console.warn('⚠️ Webhook com key incompleta:', {
