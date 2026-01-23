@@ -33,17 +33,37 @@ export async function POST(request: NextRequest) {
     if (action === 'sync-conversation' && remoteJid) {
       console.log(`🔄 Sincronizando conversa ${remoteJid}...`)
       
-      const totalMessages = await syncConversationHistory(
-        EVOLUTION_CONFIG,
-        remoteJid,
-        messagesLimit || 100
-      )
+      try {
+        const totalMessages = await syncConversationHistory(
+          EVOLUTION_CONFIG,
+          remoteJid,
+          messagesLimit || 100
+        )
 
-      return NextResponse.json({
-        success: true,
-        message: `${totalMessages} mensagens sincronizadas`,
-        totalMessages
-      })
+        console.log(`✅ Sincronização concluída: ${totalMessages} mensagens`)
+
+        return NextResponse.json({
+          success: true,
+          message: `${totalMessages} mensagens sincronizadas`,
+          totalMessages
+        })
+      } catch (syncError) {
+        console.error(`❌ ERRO CRÍTICO NO SYNC de ${remoteJid}:`, syncError)
+        console.error('❌ Detalhes:', {
+          name: syncError instanceof Error ? syncError.name : 'Unknown',
+          message: syncError instanceof Error ? syncError.message : String(syncError),
+          stack: syncError instanceof Error ? syncError.stack : 'N/A'
+        })
+        
+        return NextResponse.json(
+          {
+            success: false,
+            error: syncError instanceof Error ? syncError.message : 'Erro ao sincronizar conversa',
+            details: syncError instanceof Error ? syncError.stack : undefined
+          },
+          { status: 500 }
+        )
+      }
     }
 
     // Sincronizar todas as conversas
