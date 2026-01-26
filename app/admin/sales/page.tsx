@@ -38,6 +38,8 @@ interface Sale {
   utm_medium?: string
   utm_campaign?: string
   source?: 'sale' | 'attempt'
+  coupon_code?: string | null
+  coupon_discount?: number
 }
 
 type StatusFilter = 'all' | 'paid' | 'pending' | 'failed' | 'refunded'
@@ -297,6 +299,7 @@ export default function SalesPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Cliente</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Cupom</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Método</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Data</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Origem</th>
@@ -326,8 +329,24 @@ export default function SalesPage() {
                         <div className="font-medium text-white">{sale.customer_name}</div>
                         <div className="text-sm text-gray-400">{sale.customer_email}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap font-bold text-white">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(sale.total_amount)}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-bold text-white">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(sale.total_amount)}
+                        </div>
+                        {sale.coupon_code && sale.coupon_discount && sale.coupon_discount > 0 && (
+                          <div className="text-xs text-green-400 font-medium mt-0.5">
+                            🎟️ {sale.coupon_code} (-R$ {sale.coupon_discount.toFixed(2)})
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {sale.coupon_code ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-green-500/20 text-green-400 border border-green-500/30">
+                            🎟️ {sale.coupon_code}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-500">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-2xl">{getPaymentMethodIcon(sale.payment_method)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
