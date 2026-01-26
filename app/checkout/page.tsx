@@ -254,26 +254,27 @@ export default function CheckoutPage() {
 
   // Order Bumps
   const orderBumps = [
-    {
-      id: "32989468", // Conteúdo Infinito Instagram
-      title: "🎯 Conteúdo Infinito para Instagram",
-      description: "Templates prontos + Calendário editorial + Ideias infinitas de posts para suas redes sociais",
-      originalPrice: 97,
-      price: 29.90,
-      discount: 69,
-      highlight: "MAIS VENDIDO",
-      badge: "LIMITADO",
-    },
-    {
-      id: "32989503", // Implementação Assistida
-      title: "📚 Implementação Assistida",
-      description: "Instalação completa do sistema + Configuração personalizada + 1 hora de treinamento individual",
-      originalPrice: 297,
-      price: 97,
-      discount: 67,
-      highlight: "ECONOMIZE TEMPO",
-      badge: "EXCLUSIVO",
-    },
+    // TEMPORARIAMENTE OCULTOS - Aguardando criação dos produtos
+    // {
+    //   id: "32989468", // Conteúdo Infinito Instagram
+    //   title: "🎯 Conteúdo Infinito para Instagram",
+    //   description: "Templates prontos + Calendário editorial + Ideias infinitas de posts para suas redes sociais",
+    //   originalPrice: 97,
+    //   price: 29.90,
+    //   discount: 69,
+    //   highlight: "MAIS VENDIDO",
+    //   badge: "LIMITADO",
+    // },
+    // {
+    //   id: "32989503", // Implementação Assistida
+    //   title: "📚 Implementação Assistida",
+    //   description: "Instalação completa do sistema + Configuração personalizada + 1 hora de treinamento individual",
+    //   originalPrice: 297,
+    //   price: 97,
+    //   discount: 67,
+    //   highlight: "ECONOMIZE TEMPO",
+    //   badge: "EXCLUSIVO",
+    // },
     {
       id: "32989520", // Análise Inteligente
       title: "⚡ Análise Inteligente de Consultas",
