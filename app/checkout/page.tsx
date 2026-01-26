@@ -590,6 +590,7 @@ export default function CheckoutPage() {
         paymentMethod: paymentMethod,
         orderBumps: selectedBumpProducts,
         discount: cupomDiscount > 0 ? cupomDiscount : undefined, // Envia desconto se houver
+        coupon_code: appliedCupom || undefined, // Envia código do cupom
         session_id: sessionId,
         utm_params: utmParams,
       }

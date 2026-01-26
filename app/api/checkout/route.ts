@@ -232,6 +232,8 @@ export async function POST(request: NextRequest) {
         metadata: {
           appmax_order_id: result.order_id,
           discount: orderData.discount || 0,
+          coupon_code: body.coupon_code || null,
+          coupon_discount: body.discount || 0,
           order_bumps: orderData.order_bumps || []
         }
       }

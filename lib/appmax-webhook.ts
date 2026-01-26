@@ -504,6 +504,12 @@ export async function handleAppmaxWebhook(request: NextRequest, endpoint: string
   let saleId: string | null = null
   try {
     const now = new Date().toISOString()
+    
+    // Extrair coupon_code do metadata
+    const metadata = data.metadata || payload.metadata || {}
+    const couponCode = metadata.coupon_code || null
+    const couponDiscount = metadata.coupon_discount || 0
+    
     const salePayload: Record<string, any> = {
       appmax_order_id: orderId,
       customer_id: customerId,
@@ -513,7 +519,9 @@ export async function handleAppmaxWebhook(request: NextRequest, endpoint: string
       customer_cpf: customerCpf,
       total_amount: totalAmount,
       subtotal: totalAmount,
-      discount: 0,
+      discount: couponDiscount,
+      coupon_code: couponCode,
+      coupon_discount: couponDiscount,
       status,
       failure_reason: failureReason || null,
       payment_method: paymentMethod,
