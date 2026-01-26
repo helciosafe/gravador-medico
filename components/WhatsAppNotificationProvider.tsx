@@ -22,10 +22,7 @@ export function WhatsAppNotificationProvider({ children }: { children: React.Rea
   const { addNotification } = useNotifications()
 
   useEffect(() => {
-    // Capturar timestamp do momento do login
-    const loginTimestamp = new Date().toISOString()
     console.log('🔌 [WhatsApp Global] Conectando ao Supabase Realtime...')
-    console.log('🕐 [WhatsApp Global] Só notificar mensagens criadas após:', loginTimestamp)
 
     const channel = supabase
       .channel('whatsapp-global-notifications')
@@ -42,13 +39,6 @@ export function WhatsAppNotificationProvider({ children }: { children: React.Rea
           const newMessage = payload.new as WhatsAppMessage
           const fromMe = normalizeFromMe(newMessage.from_me)
 
-          // 🔥 IMPORTANTE: Verificar se a mensagem é realmente nova (criada após login)
-          const messageTimestamp = newMessage.timestamp || newMessage.created_at
-          if (messageTimestamp && messageTimestamp < loginTimestamp) {
-            console.log('⏭️ [WhatsApp Global] Mensagem antiga (anterior ao login), ignorando notificação')
-            return
-          }
-
           // Apenas notificar mensagens recebidas (não enviadas por nós)
           if (fromMe) {
             console.log('⏭️ [WhatsApp Global] Mensagem enviada por mim, ignorando notificação')
@@ -61,13 +51,6 @@ export function WhatsAppNotificationProvider({ children }: { children: React.Rea
             .select('name, push_name, remote_jid')
             .eq('remote_jid', newMessage.remote_jid)
             .single()
-
-          console.log('📋 [WhatsApp Global] Dados do contato:', {
-            contact,
-            remote_jid: newMessage.remote_jid,
-            message_type: newMessage.message_type,
-            content: newMessage.content?.substring(0, 50)
-          })
 
           // Usar função de mapeamento para corrigir nomes
           const contactName = getDisplayContactName(
@@ -88,15 +71,6 @@ export function WhatsAppNotificationProvider({ children }: { children: React.Rea
               sticker: '🎨 Sticker'
             }
             messageContent = typeLabels[newMessage.message_type] || '[Mídia]'
-          }
-
-          // 🔥 IMPORTANTE: Validar que temos dados antes de notificar
-          if (!contactName || !contactName.trim() || !messageContent || !messageContent.trim()) {
-            console.warn('⚠️ [WhatsApp Global] Notificação ignorada - dados inválidos:', { 
-              contactName, 
-              messageContent: messageContent?.substring(0, 30) 
-            })
-            return
           }
 
           console.log('🔔 [WhatsApp Global] Disparando notificação:', {

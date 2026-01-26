@@ -23,7 +23,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const seenNotificationsRef = useRef<Set<string>>(globalSeenNotifications)
   const isSubscribedRef = useRef<boolean>(false)
   const isBootstrappedRef = useRef<boolean>(false) // 🔥 Flag para indicar que bootstrap terminou
-  const bootstrapTimestampRef = useRef<string | null>(null) // 🔥 Timestamp do bootstrap para validar mensagens
 
   // Calcular não lidas
   const unreadCount = notifications.filter(n => !n.read).length
@@ -81,38 +80,25 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const toastTitle = notification.title
     const toastMessage = notification.message
 
-    console.log('🎨 [Toast] Preparando toast:', { 
-      toastTitle, 
-      toastMessage,
-      titleValid: !!(toastTitle && toastTitle.trim()),
-      messageValid: !!(toastMessage && toastMessage.trim())
-    })
-
-    // 🔥 IMPORTANTE: Só mostrar toast se tiver título e mensagem válidos
-    if (toastTitle && toastTitle.trim() && toastMessage && toastMessage.trim()) {
-      console.log('✅ [Toast] Mostrando toast:', { toastTitle, toastMessage: toastMessage.substring(0, 30) })
-      toast.success(toastTitle, {
-        description: toastMessage,
-        duration: 5000,
-        closeButton: true, // ✅ Adiciona botão X para fechar
-        action: notification.metadata ? {
-          label: 'Ver',
-          onClick: () => {
-            // Redirecionar baseado no tipo
-            const meta = notification.metadata
-            if (!meta) return
-            
-            if (notification.type === 'whatsapp_message' && meta.whatsapp_remote_jid) {
-              window.location.href = `/admin/whatsapp?chat=${encodeURIComponent(meta.whatsapp_remote_jid)}`
-            } else if (notification.type === 'admin_chat_message' && meta.admin_chat_conversation_id) {
-              window.location.href = `/admin/chat?conversation=${meta.admin_chat_conversation_id}`
-            }
+    toast.success(toastTitle, {
+      description: toastMessage,
+      duration: 5000,
+      closeButton: true, // ✅ Adiciona botão X para fechar
+      action: notification.metadata ? {
+        label: 'Ver',
+        onClick: () => {
+          // Redirecionar baseado no tipo
+          const meta = notification.metadata
+          if (!meta) return
+          
+          if (notification.type === 'whatsapp_message' && meta.whatsapp_remote_jid) {
+            window.location.href = `/admin/whatsapp?chat=${encodeURIComponent(meta.whatsapp_remote_jid)}`
+          } else if (notification.type === 'admin_chat_message' && meta.admin_chat_conversation_id) {
+            window.location.href = `/admin/chat?conversation=${meta.admin_chat_conversation_id}`
           }
-        } : undefined
-      })
-    } else {
-      console.warn('⚠️ Toast ignorado - título ou mensagem vazio:', { toastTitle, toastMessage })
-    }
+        }
+      } : undefined
+    })
 
     // Notificação do navegador (se permitido)
     if ('Notification' in window && Notification.permission === 'granted') {
@@ -161,10 +147,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
     isSubscribedRef.current = true
     
-    // Capturar timestamp do momento da conexão
-    const connectionTimestamp = new Date().toISOString()
     console.log('🔌 NotificationProvider: Conectando ao Realtime...')
-    console.log('🕐 NotificationProvider: Só notificar mensagens criadas após:', connectionTimestamp)
 
     // Canal WhatsApp
     const whatsappChannel = supabase
@@ -182,13 +165,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           // 🔥 IMPORTANTE: Só notificar APÓS bootstrap completar
           if (!isBootstrappedRef.current) {
             console.log('⏳ [Realtime] Aguardando bootstrap - mensagem ignorada')
-            return
-          }
-          
-          // 🔥 IMPORTANTE: Verificar se a mensagem é realmente nova (criada após conexão)
-          const messageTimestamp = newMessage.timestamp || newMessage.created_at
-          if (messageTimestamp && messageTimestamp < connectionTimestamp) {
-            console.log('⏭️ [Realtime] Mensagem antiga (anterior à conexão), ignorando')
             return
           }
           
@@ -225,20 +201,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             .single()
           
           const contactName = contact?.name || contact?.push_name || newMessage.remote_jid.split('@')[0]
-          const messageContent = newMessage.content || '[Mídia]'
           
-          // 🔥 IMPORTANTE: Validar que temos dados antes de notificar
-          if (!contactName || !messageContent) {
-            console.warn('⚠️ [Realtime] Notificação ignorada - dados inválidos:', { contactName, messageContent })
-            return
-          }
-          
-          console.log('✅ [Realtime] Criando notificação:', { contactName, messageContent: messageContent.substring(0, 30) })
+          console.log('✅ [Realtime] Criando notificação:', contactName)
           
           addNotification({
             type: 'whatsapp_message',
             title: contactName,
-            message: messageContent,
+            message: newMessage.content || '[Mídia]',
             metadata: {
               whatsapp_remote_jid: newMessage.remote_jid,
               whatsapp_message_id: newMessage.id,
@@ -270,21 +239,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             return
           }
           
-          // 🔥 IMPORTANTE: Verificar se a mensagem é realmente nova (criada após conexão)
-          const messageTimestamp = newMessage.created_at
-          if (messageTimestamp && messageTimestamp < connectionTimestamp) {
-            console.log('⏭️ [Realtime Chat] Mensagem antiga (anterior à conexão), ignorando')
-            return
-          }
-          
-          // Deduplicação imediata por ID da mensagem
-          const chatKey = `admin_chat:${newMessage.id}`
-          if (seenNotificationsRef.current.has(chatKey)) {
-            console.log('🚫 [Realtime Chat] Duplicata ignorada:', chatKey)
-            return
-          }
-          seenNotificationsRef.current.add(chatKey)
-          
           lastAdminChatMessageIdRef.current = newMessage.id
           
           // Buscar dados do sender
@@ -295,20 +249,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             .single()
           
           const senderName = sender?.name || sender?.email || 'Admin'
-          const messageContent = newMessage.content || '[Mídia]'
           
-          // 🔥 IMPORTANTE: Validar que temos dados antes de notificar
-          if (!senderName || !messageContent) {
-            console.warn('⚠️ [Realtime Chat] Notificação ignorada - dados inválidos:', { senderName, messageContent })
-            return
-          }
-          
-          console.log('✅ [Realtime Chat] Criando notificação:', { senderName, messageContent: messageContent.substring(0, 30) })
+          console.log('🔔 [Realtime Chat] Nova mensagem:', senderName)
           
           addNotification({
             type: 'admin_chat_message',
             title: senderName,
-            message: messageContent,
+            message: newMessage.content || '[Mídia]',
             metadata: {
               admin_chat_conversation_id: newMessage.conversation_id,
               admin_chat_message_id: newMessage.id,
@@ -332,64 +279,50 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // ================================================================
   useEffect(() => {
     let cancelled = false
-    const bootstrapTimestamp = new Date().toISOString()
-    bootstrapTimestampRef.current = bootstrapTimestamp // 🔥 Salvar na ref para uso no polling
 
     const bootstrap = async () => {
       try {
-        // Buscar TODAS as mensagens WhatsApp antigas (últimos 5 minutos) e marcar como vistas
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-        const { data: recentMessages } = await supabase
+        // Buscar a última mensagem WhatsApp e marcar como "já vista"
+        const { data: latestMessage } = await supabase
           .from('whatsapp_messages')
-          .select('id, timestamp')
-          .gte('timestamp', fiveMinutesAgo)
+          .select('id')
           .order('timestamp', { ascending: false })
+          .limit(1)
 
-        if (!cancelled && recentMessages) {
-          recentMessages.forEach(msg => {
-            const msgKey = `whatsapp:${msg.id}`
-            seenNotificationsRef.current.add(msgKey)
-          })
-          
-          if (recentMessages.length > 0) {
-            lastWhatsAppMessageIdRef.current = recentMessages[0].id
-            console.log(`🔵 [Bootstrap] ${recentMessages.length} mensagens WhatsApp antigas marcadas como vistas`)
-          }
+        if (!cancelled && latestMessage?.[0]?.id) {
+          lastWhatsAppMessageIdRef.current = latestMessage[0].id
+          // 🔥 IMPORTANTE: Marcar como já vista para NÃO notificar ao carregar
+          const msgKey = `whatsapp:${latestMessage[0].id}`
+          seenNotificationsRef.current.add(msgKey)
+          console.log('🔵 [Bootstrap] Última mensagem WhatsApp marcada como vista:', msgKey)
         }
       } catch (err) {
-        console.error('❌ [Bootstrap] Erro ao buscar mensagens WhatsApp:', err)
+        console.error('❌ [Bootstrap] Erro ao buscar última mensagem WhatsApp:', err)
       }
 
       try {
-        // Buscar TODAS as mensagens do chat interno antigas (últimos 5 minutos) e marcar como vistas
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-        const { data: recentChats } = await supabase
+        // Buscar a última mensagem do chat interno e marcar como "já vista"
+        const { data: latestChat } = await supabase
           .from('admin_chat_messages')
-          .select('id, created_at')
-          .gte('created_at', fiveMinutesAgo)
+          .select('id')
           .order('created_at', { ascending: false })
+          .limit(1)
 
-        if (!cancelled && recentChats) {
-          recentChats.forEach(msg => {
-            const chatKey = `admin_chat:${msg.id}`
-            seenNotificationsRef.current.add(chatKey)
-          })
-          
-          if (recentChats.length > 0) {
-            lastAdminChatMessageIdRef.current = recentChats[0].id
-            console.log(`🔵 [Bootstrap] ${recentChats.length} mensagens Chat antigas marcadas como vistas`)
-          }
+        if (!cancelled && latestChat?.[0]?.id) {
+          lastAdminChatMessageIdRef.current = latestChat[0].id
+          // 🔥 IMPORTANTE: Marcar como já vista para NÃO notificar ao carregar
+          const chatKey = `admin_chat:${latestChat[0].id}`
+          seenNotificationsRef.current.add(chatKey)
+          console.log('🔵 [Bootstrap] Última mensagem Chat marcada como vista:', chatKey)
         }
       } catch (err) {
-        console.error('❌ [Bootstrap] Erro ao buscar mensagens Chat:', err)
+        console.error('❌ [Bootstrap] Erro ao buscar última mensagem Chat:', err)
       }
       
       // 🔥 IMPORTANTE: Marcar bootstrap como completo ANTES de iniciar polling
       if (!cancelled) {
-        // Aguardar 1 segundo para garantir que todas as mensagens antigas foram processadas
-        await new Promise(resolve => setTimeout(resolve, 1000))
         isBootstrappedRef.current = true
-        console.log('✅ [Bootstrap] Completo - Agora só notifica mensagens criadas após:', bootstrapTimestamp)
+        console.log('✅ [Bootstrap] Completo - Agora pode notificar mensagens novas')
       }
     }
 
@@ -412,21 +345,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   const latestWhatsApp = payload?.whatsapp
         if (latestWhatsApp?.id && latestWhatsApp.id !== lastWhatsAppMessageIdRef.current) {
-          const fromMe = normalizeFromMe(latestWhatsApp.from_me)
-
-          // 🔥 IMPORTANTE: Verificar se a mensagem é posterior ao bootstrap
-          const messageTimestamp = latestWhatsApp.timestamp || latestWhatsApp.created_at
-          if (bootstrapTimestampRef.current && messageTimestamp && messageTimestamp < bootstrapTimestampRef.current) {
-            console.log('⏭️ [Polling] Mensagem anterior ao bootstrap, ignorando:', {
-              messageTimestamp,
-              bootstrapTimestamp: bootstrapTimestampRef.current
-            })
-            // Atualizar o lastId para não processar novamente
-            lastWhatsAppMessageIdRef.current = latestWhatsApp.id
-            return
-          }
-
           lastWhatsAppMessageIdRef.current = latestWhatsApp.id
+          const fromMe = normalizeFromMe(latestWhatsApp.from_me)
 
           if (!fromMe && latestWhatsApp.remote_jid) {
             const contact = latestWhatsApp.contact || null
@@ -434,20 +354,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
               contact?.name ||
               contact?.push_name ||
               latestWhatsApp.remote_jid.split('@')[0]
-            const messageContent = latestWhatsApp.content || '[Mídia]'
 
-            // 🔥 IMPORTANTE: Validar que temos dados antes de notificar
-            if (!contactName || !messageContent) {
-              console.warn('⚠️ [Polling] Notificação ignorada - dados inválidos:', { contactName, messageContent })
-              return
-            }
-
-            console.log('✅ [Polling] Nova mensagem WhatsApp detectada:', { contactName, messageContent: messageContent.substring(0, 30) })
+            console.log('🔔 [Polling] Nova mensagem WhatsApp detectada:', contactName)
             
             addNotification({
               type: 'whatsapp_message',
               title: contactName,
-              message: messageContent,
+              message: latestWhatsApp.content || '[Mídia]',
               metadata: {
                 whatsapp_remote_jid: latestWhatsApp.remote_jid,
                 whatsapp_message_id: latestWhatsApp.id,
@@ -459,20 +372,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
         const latestAdminChat = payload?.adminChat
         if (latestAdminChat?.id && latestAdminChat.id !== lastAdminChatMessageIdRef.current) {
-          // 🔥 IMPORTANTE: Verificar se a mensagem é posterior ao bootstrap
-          const messageTimestamp = latestAdminChat.created_at
-          if (bootstrapTimestampRef.current && messageTimestamp && messageTimestamp < bootstrapTimestampRef.current) {
-            console.log('⏭️ [Polling Chat] Mensagem anterior ao bootstrap, ignorando:', {
-              messageTimestamp,
-              bootstrapTimestamp: bootstrapTimestampRef.current
-            })
-            // Atualizar o lastId para não processar novamente
-            lastAdminChatMessageIdRef.current = latestAdminChat.id
-            return
-          }
-
           lastAdminChatMessageIdRef.current = latestAdminChat.id
-          
           const { data: sender } = await supabase
             .from('users')
             .select('name, email, avatar_url')
@@ -480,20 +380,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             .single()
 
           const senderName = sender?.name || sender?.email || 'Admin'
-          const messageContent = latestAdminChat.content || '[Mídia]'
 
-          // 🔥 IMPORTANTE: Validar que temos dados antes de notificar
-          if (!senderName || !messageContent) {
-            console.warn('⚠️ [Polling Chat] Notificação ignorada - dados inválidos:', { senderName, messageContent })
-            return
-          }
-
-          console.log('✅ [Polling] Nova mensagem Chat detectada:', { senderName, messageContent: messageContent.substring(0, 30) })
+          console.log('🔔 [Polling] Nova mensagem Chat detectada:', senderName)
 
           addNotification({
             type: 'admin_chat_message',
             title: senderName,
-            message: messageContent,
+            message: latestAdminChat.content || '[Mídia]',
             metadata: {
               admin_chat_conversation_id: latestAdminChat.conversation_id,
               admin_chat_message_id: latestAdminChat.id,

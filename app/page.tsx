@@ -63,6 +63,7 @@ import {
 import Link from "next/link"
 import Image from "next/image"
 import CookieBanner from "@/components/CookieBanner"
+import WhatsAppFloating from "@/components/WhatsAppFloating"
 
 // Componente de partículas flutuantes (OTIMIZADO)
 const FloatingParticles = () => {
@@ -255,33 +256,8 @@ export default function LandingPage() {
     <>
       <div className="min-h-screen bg-white text-gray-900 overflow-hidden">
       
-      {/* WhatsApp Floating Button */}
-      <motion.a
-        href="https://wa.me/5521981470758?text=Olá!%20Tenho%20interesse%20no%20Gravador%20Médico.%20Gostaria%20de%20tirar%20algumas%20dúvidas."
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-50 bg-[#25D366] hover:bg-[#20BA5A] text-white rounded-full p-2.5 shadow-2xl transition-all duration-300 group"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        initial={{ opacity: 0, scale: 0 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 1, type: "spring" }}
-      >
-        <Image 
-          src="/images/whatsapp_logo.png" 
-          alt="WhatsApp" 
-          width={48} 
-          height={48}
-          className="w-11 h-11 md:w-12 md:h-12"
-        />
-        <motion.div
-          className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold"
-          animate={{ scale: [1, 1.2, 1] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-        >
-          1
-        </motion.div>
-      </motion.a>
+      {/* WhatsApp Floating Button com Balão Animado */}
+      <WhatsAppFloating />
 
       {/* Animated grid background */}
       <div className="fixed inset-0 bg-[linear-gradient(rgba(16,185,129,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.03)_1px,transparent_1px)] bg-[size:64px_64px]" />
@@ -2556,7 +2532,7 @@ export default function LandingPage() {
               className="inline-block"
             >
               <a
-                href="https://wa.me/5521981470758?text=Olá!%20Preciso%20de%20suporte%20com%20o%20Gravador%20Médico."
+                href="https://wa.me/5521986451821?text=Olá!%20Preciso%20de%20suporte%20com%20o%20Gravador%20Médico."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-3 px-8 py-4 bg-white border-2 border-white text-brand-600 rounded-2xl font-bold text-lg hover:bg-brand-50 transition-all shadow-md hover:shadow-lg"
