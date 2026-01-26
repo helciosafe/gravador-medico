@@ -29,7 +29,8 @@ import {
   MessageSquareDashed,
   Footprints,
   Activity,
-  Webhook
+  Webhook,
+  Ticket
 } from 'lucide-react'
 import NotificationBell from '@/components/NotificationBell'
 import { WhatsAppNotificationProvider } from '@/components/WhatsAppNotificationProvider'
@@ -124,6 +125,12 @@ const menuItems = [
     icon: Package, 
     label: 'Produtos', 
     href: '/admin/products',
+    badge: null
+  },
+  { 
+    icon: Ticket, 
+    label: 'Cupons', 
+    href: '/admin/cupons',
     badge: null
   },
   { 
