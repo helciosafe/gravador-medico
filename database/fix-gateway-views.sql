@@ -5,12 +5,20 @@
 -- Data: 27/01/2026
 -- ========================================
 
+-- DROP de views antigas (se existirem)
+DROP VIEW IF EXISTS public.sales_by_gateway CASCADE;
+DROP VIEW IF EXISTS public.payment_gateway_performance CASCADE;
+DROP VIEW IF EXISTS public.cascata_analysis CASCADE;
+
+-- DROP de função antiga (se existir)
+DROP FUNCTION IF EXISTS public.get_gateway_stats(timestamp with time zone, timestamp with time zone) CASCADE;
+
 -- =====================================================
 -- 1. VIEW: sales_by_gateway
 -- =====================================================
 -- Métricas agregadas por gateway (MP vs AppMax)
 
-CREATE OR REPLACE VIEW public.sales_by_gateway AS
+CREATE VIEW public.sales_by_gateway AS
 SELECT 
     s.payment_gateway,
     COUNT(*) as total_sales,
@@ -34,7 +42,7 @@ GROUP BY s.payment_gateway;
 -- =====================================================
 -- Performance diária por gateway
 
-CREATE OR REPLACE VIEW public.payment_gateway_performance AS
+CREATE VIEW public.payment_gateway_performance AS
 SELECT 
     s.payment_gateway,
     DATE(s.created_at) as sale_date,
@@ -58,7 +66,7 @@ ORDER BY sale_date DESC, payment_gateway;
 -- =====================================================
 -- Análise do sistema de cascata MP → AppMax
 
-CREATE OR REPLACE VIEW public.cascata_analysis AS
+CREATE VIEW public.cascata_analysis AS
 WITH mp_attempts AS (
     SELECT 
         COUNT(*) as total_attempts,
@@ -109,7 +117,7 @@ CROSS JOIN appmax_direct ad;
 -- =====================================================
 -- Função para buscar stats por gateway com filtro de data
 
-CREATE OR REPLACE FUNCTION public.get_gateway_stats(
+CREATE FUNCTION public.get_gateway_stats(
     start_date TIMESTAMP WITH TIME ZONE DEFAULT NOW() - INTERVAL '30 days',
     end_date TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 )
