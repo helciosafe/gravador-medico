@@ -91,7 +91,7 @@ export async function handleMercadoPagoWebhookEnterprise(request: NextRequest) {
 
     while (!order && retries < MAX_RETRIES) {
       const { data: orderData, error: orderError } = await supabaseAdmin
-        .from('sales')
+        .from('orders')
         .select('*')
         .eq('mercadopago_payment_id', paymentId)
         .single()
@@ -143,7 +143,7 @@ export async function handleMercadoPagoWebhookEnterprise(request: NextRequest) {
     console.log(`🔄 Atualizando status: ${order.order_status} → ${newStatus}`)
 
     const { error: updateError } = await supabaseAdmin
-      .from('sales')
+      .from('orders')
       .update({
         order_status: newStatus,
         status: mapMPStatusToLegacyStatus(payment.status), // Manter compatibilidade
@@ -187,7 +187,7 @@ export async function handleMercadoPagoWebhookEnterprise(request: NextRequest) {
           
           // Marcar pedido como provisioning_failed
           await supabaseAdmin
-            .from('sales')
+            .from('orders')
             .update({ order_status: 'provisioning_failed' })
             .eq('id', order.id)
         } else {
