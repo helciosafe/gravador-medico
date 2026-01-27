@@ -37,17 +37,12 @@ COMMENT ON COLUMN public.integration_logs.recipient_email IS 'Email do destinat�
 -- Habilitar RLS (Row Level Security)
 ALTER TABLE public.integration_logs ENABLE ROW LEVEL SECURITY;
 
--- Política: Apenas admins podem ler os logs
-CREATE POLICY "Admin pode ler logs"
+-- Política: Usuários autenticados podem ler os logs
+-- (Ajuste depois se quiser restringir apenas para admins)
+CREATE POLICY "Usuarios autenticados podem ler logs"
     ON public.integration_logs
     FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.id = auth.uid()
-            AND profiles.role = 'admin'
-        )
-    );
+    USING (auth.uid() IS NOT NULL);
 
 -- Política: Sistema pode inserir logs (via service_role)
 CREATE POLICY "Sistema pode inserir logs"

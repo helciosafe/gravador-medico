@@ -30,7 +30,10 @@ import {
   Footprints,
   Activity,
   Webhook,
-  Ticket
+  Ticket,
+  Mail,
+  ExternalLink,
+  Heart
 } from 'lucide-react'
 import NotificationBell from '@/components/NotificationBell'
 import { WhatsAppNotificationProvider } from '@/components/WhatsAppNotificationProvider'
@@ -54,6 +57,28 @@ const automationItems = [
     label: 'WhatsApp', 
     href: '/admin/whatsapp',
     badge: null
+  },
+]
+
+const lovableItems = [
+  { 
+    icon: Users, 
+    label: 'Gerenciar Usuários', 
+    href: '/admin/lovable/users',
+    badge: null
+  },
+  { 
+    icon: Mail, 
+    label: 'Logs de Integração', 
+    href: '/admin/lovable/emails',
+    badge: null
+  },
+  { 
+    icon: ExternalLink, 
+    label: 'Abrir Lovable App', 
+    href: 'https://gravador-medico.lovable.app',
+    badge: null,
+    external: true
   },
 ]
 
@@ -144,6 +169,11 @@ const menuItems = [
     label: 'CRM', 
     href: '/admin/crm',
     badge: null
+  },
+  { 
+    label: 'Lovable', 
+    icon: Heart,
+    items: lovableItems
   },
   { 
     label: 'Tracking', 
@@ -427,6 +457,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         {item.items.map((child) => {
                           const isActive = pathname === child.href
                           const ChildIcon = child.icon
+                          const isExternal = (child as any).external
+
+                          if (isExternal) {
+                            return (
+                              <a
+                                key={child.href}
+                                href={child.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all text-gray-400 hover:bg-gray-700/50 hover:text-white"
+                              >
+                                <ChildIcon className="w-4 h-4 mr-3" />
+                                <span className="flex-1 text-left">{child.label}</span>
+                                <ExternalLink className="w-3 h-3 ml-2 opacity-50" />
+                              </a>
+                            )
+                          }
 
                           return (
                             <button
@@ -568,6 +615,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             {item.items.map((child) => {
                               const isActive = pathname === child.href
                               const ChildIcon = child.icon
+                              const isExternal = (child as any).external
+
+                              if (isExternal) {
+                                return (
+                                  <a
+                                    key={child.href}
+                                    href={child.href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all text-gray-400 hover:bg-gray-700/50 hover:text-white"
+                                  >
+                                    <ChildIcon className="w-4 h-4 mr-3" />
+                                    <span className="flex-1 text-left">{child.label}</span>
+                                    <ExternalLink className="w-3 h-3 ml-2 opacity-50" />
+                                  </a>
+                                )
+                              }
 
                               return (
                                 <button

@@ -198,9 +198,9 @@ serve(async (req) => {
     }
 
     // =====================================================
-    // PATCH: RESETAR SENHA
+    // PUT: RESETAR SENHA (não PATCH)
     // =====================================================
-    if (method === 'PATCH') {
+    if (method === 'PUT') {
       const body: ResetPasswordRequest = await req.json()
       const { userId, newPassword } = body
 
@@ -248,6 +248,117 @@ serve(async (req) => {
             id: data.user.id,
             email: data.user.email
           }
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    // =====================================================
+    // PATCH: DESATIVAR/ATIVAR USUÁRIO
+    // =====================================================
+    if (method === 'PATCH') {
+      const body: { userId: string; action: 'ban' | 'unban' } = await req.json()
+      const { userId, action } = body
+
+      if (!userId || !action) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Validation Error',
+            message: 'userId e action são obrigatórios' 
+          }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      console.log(`🔒 ${action === 'ban' ? 'Desativando' : 'Ativando'} usuário:`, userId)
+
+      const updateData = action === 'ban' 
+        ? { ban_duration: '876000h' } // ~100 anos (ban permanente)
+        : { ban_duration: 'none' }
+
+      const { data, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        userId,
+        updateData
+      )
+
+      if (updateError) {
+        console.error(`❌ Erro ao ${action === 'ban' ? 'desativar' : 'ativar'}:`, updateError)
+        return new Response(
+          JSON.stringify({ 
+            error: 'Update Error',
+            message: updateError.message 
+          }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: `Usuário ${action === 'ban' ? 'desativado' : 'ativado'} com sucesso`,
+          user: {
+            id: data.user.id,
+            email: data.user.email
+          }
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    // =====================================================
+    // DELETE: EXCLUIR USUÁRIO
+    // =====================================================
+    if (method === 'DELETE') {
+      const url = new URL(req.url)
+      const userId = url.searchParams.get('userId')
+
+      if (!userId) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Validation Error',
+            message: 'userId é obrigatório' 
+          }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      console.log('🗑️ Excluindo usuário:', userId)
+
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
+
+      if (deleteError) {
+        console.error('❌ Erro ao excluir usuário:', deleteError)
+        return new Response(
+          JSON.stringify({ 
+            error: 'Delete Error',
+            message: deleteError.message 
+          }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: 'Usuário excluído com sucesso'
         }),
         { 
           status: 200, 

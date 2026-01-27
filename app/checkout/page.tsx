@@ -44,6 +44,9 @@ export default function CheckoutPage() {
   const [pixQrCode, setPixQrCode] = useState("")
   const [orderId, setOrderId] = useState("")
   
+  // 🔥 IDEMPOTENCY KEY - Gerado uma vez e mantido durante toda a sessão
+  const [idempotencyKey] = useState(() => crypto.randomUUID())
+  
   // Cupom system
   const [cupomInput, setCupomInput] = useState("")
   const [appliedCupom, setAppliedCupom] = useState<string | null>(null)
@@ -609,8 +612,14 @@ export default function CheckoutPage() {
       
       const response = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Idempotency-Key': idempotencyKey // 🔥 Previne cobranças duplicadas
+        },
+        body: JSON.stringify({
+          ...payload,
+          idempotencyKey // Também envia no body para compatibilidade
+        })
       })
 
       const result = await response.json()

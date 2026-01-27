@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { Home, Compass, Wrench, ShoppingBag, User, FileText, BarChart3, ShoppingCart, MessageSquare, MessageCircle, Target, Ticket } from "lucide-react"
+import { Home, Compass, Wrench, ShoppingBag, User, FileText, BarChart3, ShoppingCart, MessageSquare, MessageCircle, Target, Ticket, Users, Mail } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 import NotificationBell from "./NotificationBell"
@@ -55,6 +55,20 @@ export default function DockSidebar() {
       href: "/admin/cupons",
       label: "Cupons",
       description: "Gerenciar descontos",
+    },
+    {
+      id: "lovable-users",
+      icon: <Users className="w-6 h-6" />,
+      href: "/admin/lovable/users",
+      label: "Lovable Users",
+      description: "Gerenciar usuários",
+    },
+    {
+      id: "lovable-emails",
+      icon: <Mail className="w-6 h-6" />,
+      href: "/admin/lovable/emails",
+      label: "Lovable Logs",
+      description: "Logs de integração",
     },
     {
       id: "chat",

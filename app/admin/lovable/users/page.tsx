@@ -8,9 +8,6 @@
 
 import { useEffect, useState } from 'react'
 import {
-  listLovableUsers,
-  createLovableUser,
-  resetLovableUserPassword,
   generateSecurePassword,
   type LovableUser,
 } from '@/services/lovable-integration'
@@ -47,7 +44,10 @@ import {
   Copy,
   Mail,
   Calendar,
-  Shield
+  Shield,
+  Ban,
+  Trash2,
+  CheckCircle
 } from 'lucide-react'
 
 export default function LovableUsersPage() {
@@ -73,28 +73,90 @@ export default function LovableUsersPage() {
   const [newPassword, setNewPassword] = useState('')
   const [showNewPassword, setShowNewPassword] = useState(false)
 
+  // Modal de confirmar desativar
+  const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false)
+  const [deactivating, setDeactivating] = useState(false)
+
+  // Modal de confirmar excluir
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
   // =====================================================
   // CARREGAR USUÁRIOS
   // =====================================================
 
-  const loadUsers = async () => {
+  const loadUsers = async (showToast = false) => {
     setRefreshing(true)
-    const result = await listLovableUsers()
-    
-    if (result.success && result.users) {
-      setUsers(result.users)
-      toast(`✅ ${result.users.length} usuários carregados`)
-    } else {
-      toast(`❌ ${result.error || 'Erro ao carregar'}`, 'error')
+    try {
+      const response = await fetch('/api/lovable/users')
+      const result = await response.json()
+      
+      if (result.success && result.users) {
+        setUsers(result.users)
+        if (showToast) {
+          toast(`✅ ${result.users.length} usuários carregados`)
+        }
+      } else {
+        toast(`❌ ${result.error || 'Erro ao carregar'}`, 'error')
+      }
+    } catch (error) {
+      toast(`❌ Erro ao carregar usuários`, 'error')
     }
     
     setRefreshing(false)
     setLoading(false)
   }
 
+  // =====================================================
+  // FUNÇÕES DE UTILIDADE
+  // =====================================================
+
+  const isUserBanned = (user: LovableUser): boolean => {
+    if (!user.banned_until) return false
+    const bannedUntil = new Date(user.banned_until)
+    const now = new Date()
+    return bannedUntil > now
+  }
+
+  const getUserStatusBadge = (user: LovableUser) => {
+    if (isUserBanned(user)) {
+      return (
+        <Badge 
+          style={{ 
+            backgroundColor: '#ef4444',
+            color: '#ffffff',
+            fontWeight: 600
+          }}
+          className="border-0 flex items-center gap-1"
+        >
+          <Ban className="h-3 w-3" />
+          Desativado
+        </Badge>
+      )
+    }
+    
+    return (
+      <Badge 
+        style={{ 
+          backgroundColor: '#10b981',
+          color: '#ffffff',
+          fontWeight: 600
+        }}
+        className="border-0 flex items-center gap-1"
+      >
+        <CheckCircle className="h-3 w-3" />
+        Ativo
+      </Badge>
+    )
+  }
+
+  // =====================================================
+  // CARREGAMENTO INICIAL
+  // =====================================================
+
   useEffect(() => {
-    loadUsers()
-  }, [])
+    loadUsers(false) // Não mostrar toast no carregamento inicial
+  }, []) // Array vazio para executar apenas uma vez
 
   // =====================================================
   // CRIAR USUÁRIO
@@ -108,15 +170,24 @@ export default function LovableUsersPage() {
 
     setCreating(true)
 
-    const result = await createLovableUser(newUserForm)
+    try {
+      const response = await fetch('/api/lovable/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUserForm)
+      })
+      const result = await response.json()
 
-    if (result.success) {
-      toast(`✅ Usuário ${newUserForm.email} criado com sucesso`)
-      setCreateDialogOpen(false)
-      setNewUserForm({ full_name: '', email: '', password: '' })
-      loadUsers() // Recarregar lista
-    } else {
-      toast(`❌ ${result.error || 'Erro ao criar'}`, 'error')
+      if (result.success) {
+        toast(`✅ Usuário ${newUserForm.email} criado com sucesso`)
+        setCreateDialogOpen(false)
+        setNewUserForm({ full_name: '', email: '', password: '' })
+        loadUsers(false) // Recarregar lista silenciosamente
+      } else {
+        toast(`❌ ${result.error || 'Erro ao criar'}`, 'error')
+      }
+    } catch (error) {
+      toast(`❌ Erro ao criar usuário`, 'error')
     }
 
     setCreating(false)
@@ -134,21 +205,102 @@ export default function LovableUsersPage() {
 
     setResetting(true)
 
-    const result = await resetLovableUserPassword({
-      userId: selectedUser.id,
-      newPassword,
-    })
+    try {
+      const response = await fetch('/api/lovable/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          newPassword,
+        })
+      })
+      const result = await response.json()
 
-    if (result.success) {
-      toast(`✅ Senha de ${selectedUser.email} foi alterada`)
-      setResetDialogOpen(false)
-      setNewPassword('')
-      setSelectedUser(null)
-    } else {
-      toast(`❌ ${result.error || 'Erro ao resetar'}`, 'error')
+      if (result.success) {
+        toast(`✅ Senha de ${selectedUser.email} foi alterada`)
+        setResetDialogOpen(false)
+        setNewPassword('')
+        setSelectedUser(null)
+      } else {
+        toast(`❌ ${result.error || 'Erro ao resetar'}`, 'error')
+      }
+    } catch (error) {
+      toast(`❌ Erro ao resetar senha`, 'error')
     }
 
     setResetting(false)
+  }
+
+  // =====================================================
+  // DESATIVAR/REATIVAR USUÁRIO
+  // =====================================================
+
+  const handleDeactivateUser = async () => {
+    if (!selectedUser) return
+
+    const isBanned = isUserBanned(selectedUser)
+    const action = isBanned ? 'unban' : 'ban'
+
+    setDeactivating(true)
+
+    try {
+      const response = await fetch('/api/lovable/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          action,
+        })
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        toast(isBanned 
+          ? `✅ Usuário ${selectedUser.email} foi reativado`
+          : `🔒 Usuário ${selectedUser.email} foi desativado`
+        )
+        setDeactivateDialogOpen(false)
+        setSelectedUser(null)
+        loadUsers(false) // Recarregar lista silenciosamente
+      } else {
+        console.error('Erro ao alterar status:', result)
+        toast(`❌ ${result.error || 'Erro ao desativar'}`, 'error')
+      }
+    } catch (error) {
+      toast(`❌ Erro ao desativar usuário`, 'error')
+    }
+
+    setDeactivating(false)
+  }
+
+  // =====================================================
+  // EXCLUIR USUÁRIO
+  // =====================================================
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return
+
+    setDeleting(true)
+
+    try {
+      const response = await fetch(`/api/lovable/users?userId=${selectedUser.id}`, {
+        method: 'DELETE',
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        toast(`🗑️ Usuário ${selectedUser.email} foi excluído permanentemente`)
+        setDeleteDialogOpen(false)
+        setSelectedUser(null)
+        loadUsers(false) // Recarregar lista silenciosamente
+      } else {
+        toast(`❌ ${result.error || 'Erro ao excluir'}`, 'error')
+      }
+    } catch (error) {
+      toast(`❌ Erro ao excluir usuário`, 'error')
+    }
+
+    setDeleting(false)
   }
 
   // =====================================================
@@ -205,11 +357,11 @@ export default function LovableUsersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <User className="h-8 w-8" />
+          <h1 className="text-3xl font-bold flex items-center gap-2 text-white">
+            <User className="h-8 w-8 text-white" />
             Usuários Lovable
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-gray-300 mt-1">
             Gerencie os usuários do sistema externo
           </p>
         </div>
@@ -217,8 +369,9 @@ export default function LovableUsersPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={loadUsers}
+            onClick={() => loadUsers(true)}
             disabled={refreshing}
+            className="border-gray-600 text-gray-200 hover:bg-gray-700 hover:text-white"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Atualizar
@@ -226,6 +379,7 @@ export default function LovableUsersPage() {
           <Button
             size="sm"
             onClick={() => setCreateDialogOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <UserPlus className="h-4 w-4 mr-2" />
             Novo Usuário
@@ -234,34 +388,34 @@ export default function LovableUsersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
+      <div className="grid gap-4 md:grid-cols-3 items-start">
+        <Card className="bg-gray-800/50 border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-200">Total de Usuários</CardTitle>
+            <User className="h-4 w-4 text-gray-400" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
+          <CardContent className="flex items-center justify-center">
+            <div className="text-3xl font-bold text-white">{users.length}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-gray-800/50 border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">E-mails Confirmados</CardTitle>
-            <Mail className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-200">E-mails Confirmados</CardTitle>
+            <Mail className="h-4 w-4 text-gray-400" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="flex items-center justify-center">
+            <div className="text-3xl font-bold text-white">
               {users.filter(u => u.email_confirmed_at).length}
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-gray-800/50 border-gray-700">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Admins</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-200">Admins</CardTitle>
+            <Shield className="h-4 w-4 text-gray-400" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="flex items-center justify-center">
+            <div className="text-3xl font-bold text-white">
               {users.filter(u => u.role === 'admin').length}
             </div>
           </CardContent>
@@ -269,65 +423,106 @@ export default function LovableUsersPage() {
       </div>
 
       {/* Tabela */}
-      <Card>
+      <Card className="bg-gray-800/50 border-gray-700">
         <CardHeader>
-          <CardTitle>Lista de Usuários</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-white">Lista de Usuários</CardTitle>
+          <CardDescription className="text-gray-300">
             Todos os usuários cadastrados no sistema Lovable
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
-            <TableCaption>
+            <TableCaption className="text-gray-400">
               {users.length === 0 ? 'Nenhum usuário encontrado' : `Total: ${users.length} usuários`}
             </TableCaption>
             <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Criado em</TableHead>
-                <TableHead>Último Login</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+              <TableRow className="border-gray-700">
+                <TableHead className="text-gray-200">Nome</TableHead>
+                <TableHead className="text-gray-200">Email</TableHead>
+                <TableHead className="text-gray-200">Status</TableHead>
+                <TableHead className="text-gray-200">Role</TableHead>
+                <TableHead className="text-gray-200">Criado em</TableHead>
+                <TableHead className="text-gray-200">Último Login</TableHead>
+                <TableHead className="text-right text-gray-200">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.full_name}</TableCell>
+                <TableRow key={user.id} className="border-gray-700">
+                  <TableCell className="font-medium text-white">{user.full_name}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">{user.email}</span>
+                    <div className="flex items-center gap-2 flex-nowrap">
+                      <span className="text-sm text-gray-300 truncate">{user.email}</span>
                       {user.email_confirmed_at && (
-                        <Badge variant="success" className="text-xs">
+                        <Badge variant="success" className="text-xs bg-green-600 text-white whitespace-nowrap flex-shrink-0">
                           ✓ Confirmado
                         </Badge>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.role === 'admin' ? 'premium' : 'default'}>
+                    {getUserStatusBadge(user)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      style={{ 
+                        backgroundColor: user.role === 'admin' ? '#9333ea' : '#2563eb',
+                        color: '#ffffff',
+                        fontWeight: 600
+                      }}
+                      className="border-0"
+                    >
                       {user.role || 'user'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
+                  <TableCell className="text-xs text-gray-400">
                     {formatDate(user.created_at)}
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
+                  <TableCell className="text-xs text-gray-400">
                     {formatDate(user.last_sign_in_at)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedUser(user)
-                        setResetDialogOpen(true)
-                      }}
-                    >
-                      <Key className="h-4 w-4 mr-2" />
-                      Alterar Senha
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedUser(user)
+                          setResetDialogOpen(true)
+                        }}
+                        className="text-blue-400 hover:text-blue-300 hover:bg-gray-700"
+                        title="Alterar senha"
+                      >
+                        <Key className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedUser(user)
+                          setDeactivateDialogOpen(true)
+                        }}
+                        className={isUserBanned(user) 
+                          ? "text-green-400 hover:text-green-300 hover:bg-gray-700" 
+                          : "text-yellow-400 hover:text-yellow-300 hover:bg-gray-700"
+                        }
+                        title={isUserBanned(user) ? "Reativar usuário" : "Desativar usuário"}
+                      >
+                        {isUserBanned(user) ? <CheckCircle className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedUser(user)
+                          setDeleteDialogOpen(true)
+                        }}
+                        className="text-red-400 hover:text-red-300 hover:bg-gray-700"
+                        title="Excluir usuário"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -338,16 +533,16 @@ export default function LovableUsersPage() {
 
       {/* Dialog: Criar Usuário */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="bg-gray-800 border-gray-700">
           <DialogHeader>
-            <DialogTitle>Criar Novo Usuário</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-white">Criar Novo Usuário</DialogTitle>
+            <DialogDescription className="text-gray-400">
               Preencha os dados para criar um novo usuário no Lovable
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="full_name">Nome Completo</Label>
+              <Label htmlFor="full_name" className="text-gray-200">Nome Completo</Label>
               <Input
                 id="full_name"
                 placeholder="João da Silva"
@@ -355,10 +550,12 @@ export default function LovableUsersPage() {
                 onChange={(e) =>
                   setNewUserForm({ ...newUserForm, full_name: e.target.value })
                 }
+                className="border-gray-600 placeholder:text-gray-400"
+                style={{ backgroundColor: '#374151', color: '#ffffff' }}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-gray-200">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -367,10 +564,12 @@ export default function LovableUsersPage() {
                 onChange={(e) =>
                   setNewUserForm({ ...newUserForm, email: e.target.value })
                 }
+                className="border-gray-600 placeholder:text-gray-400"
+                style={{ backgroundColor: '#374151', color: '#ffffff' }}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password" className="text-gray-200">Senha</Label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Input
@@ -381,12 +580,14 @@ export default function LovableUsersPage() {
                     onChange={(e) =>
                       setNewUserForm({ ...newUserForm, password: e.target.value })
                     }
+                    className="border-gray-600 placeholder:text-gray-400 pr-10"
+                    style={{ backgroundColor: '#374151', color: '#ffffff' }}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
+                    className="absolute right-0 top-0 h-full px-3 text-gray-300 hover:text-white hover:bg-gray-600"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
@@ -401,6 +602,7 @@ export default function LovableUsersPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => handleGeneratePassword('create')}
+                  className="border-gray-600 text-gray-200 hover:bg-gray-700 hover:text-white whitespace-nowrap"
                 >
                   🎲 Gerar
                 </Button>
@@ -410,6 +612,7 @@ export default function LovableUsersPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => copyToClipboard(newUserForm.password, 'Senha')}
+                    className="border-gray-600 text-gray-200 hover:bg-gray-700 hover:text-white"
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
@@ -417,15 +620,20 @@ export default function LovableUsersPage() {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => setCreateDialogOpen(false)}
               disabled={creating}
+              className="border-gray-600 text-gray-200 hover:bg-gray-700 hover:text-white"
             >
               Cancelar
             </Button>
-            <Button onClick={handleCreateUser} disabled={creating}>
+            <Button 
+              onClick={handleCreateUser} 
+              disabled={creating}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
               {creating ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -444,16 +652,16 @@ export default function LovableUsersPage() {
 
       {/* Dialog: Resetar Senha */}
       <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-        <DialogContent>
+        <DialogContent className="bg-gray-800 border-gray-700">
           <DialogHeader>
-            <DialogTitle>Alterar Senha</DialogTitle>
-            <DialogDescription>
-              Defina uma nova senha para <strong>{selectedUser?.email}</strong>
+            <DialogTitle className="text-white">Alterar Senha</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Defina uma nova senha para <strong className="text-white">{selectedUser?.email}</strong>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="new_password">Nova Senha</Label>
+              <Label htmlFor="new_password" className="text-gray-200">Nova Senha</Label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Input
@@ -462,12 +670,14 @@ export default function LovableUsersPage() {
                     placeholder="Mínimo 8 caracteres"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
+                    className="border-gray-600 placeholder:text-gray-400 pr-10"
+                    style={{ backgroundColor: '#374151', color: '#ffffff' }}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
+                    className="absolute right-0 top-0 h-full px-3 text-gray-300 hover:text-white hover:bg-gray-600"
                     onClick={() => setShowNewPassword(!showNewPassword)}
                   >
                     {showNewPassword ? (
@@ -481,6 +691,7 @@ export default function LovableUsersPage() {
                   type="button"
                   variant="outline"
                   onClick={() => handleGeneratePassword('reset')}
+                  className="border-gray-600 text-gray-200 hover:bg-gray-700 hover:text-white whitespace-nowrap"
                 >
                   🎲 Gerar
                 </Button>
@@ -490,6 +701,7 @@ export default function LovableUsersPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => copyToClipboard(newPassword, 'Nova senha')}
+                    className="border-gray-600 text-gray-200 hover:bg-gray-700 hover:text-white"
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
@@ -497,15 +709,20 @@ export default function LovableUsersPage() {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => setResetDialogOpen(false)}
               disabled={resetting}
+              className="border-gray-600 text-gray-200 hover:bg-gray-700 hover:text-white"
             >
               Cancelar
             </Button>
-            <Button onClick={handleResetPassword} disabled={resetting}>
+            <Button 
+              onClick={handleResetPassword} 
+              disabled={resetting}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
               {resetting ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -515,6 +732,131 @@ export default function LovableUsersPage() {
                 <>
                   <Key className="h-4 w-4 mr-2" />
                   Alterar Senha
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Confirmar Desativar/Reativar */}
+      <Dialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
+        <DialogContent className="bg-gray-800 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              {selectedUser && isUserBanned(selectedUser) ? (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-400" />
+                  Reativar Usuário
+                </>
+              ) : (
+                <>
+                  <Ban className="h-5 w-5 text-yellow-400" />
+                  Desativar Usuário
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              {selectedUser && isUserBanned(selectedUser) ? (
+                <>
+                  Deseja reativar o usuário <strong className="text-white">{selectedUser?.email}</strong>?
+                  <br />
+                  <br />
+                  O usuário voltará a ter acesso ao sistema Lovable.
+                </>
+              ) : (
+                <>
+                  Tem certeza que deseja desativar o usuário <strong className="text-white">{selectedUser?.email}</strong>?
+                  <br />
+                  <br />
+                  O usuário não conseguirá mais fazer login no sistema Lovable até ser reativado.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setDeactivateDialogOpen(false)}
+              disabled={deactivating}
+              className="border-gray-600 text-gray-200 hover:bg-gray-700 hover:text-white"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleDeactivateUser} 
+              disabled={deactivating}
+              className={selectedUser && isUserBanned(selectedUser)
+                ? "bg-green-600 hover:bg-green-700 text-white"
+                : "bg-yellow-600 hover:bg-yellow-700 text-white"
+              }
+            >
+              {deactivating ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  {selectedUser && isUserBanned(selectedUser) ? 'Reativando...' : 'Desativando...'}
+                </>
+              ) : (
+                <>
+                  {selectedUser && isUserBanned(selectedUser) ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Sim, Reativar
+                    </>
+                  ) : (
+                    <>
+                      <Ban className="h-4 w-4 mr-2" />
+                      Sim, Desativar
+                    </>
+                  )}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Confirmar Excluir */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="bg-gray-800 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-400" />
+              Excluir Usuário
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              <span className="text-red-400 font-semibold">⚠️ ATENÇÃO: Esta ação é irreversível!</span>
+              <br />
+              <br />
+              Tem certeza que deseja excluir permanentemente o usuário <strong className="text-white">{selectedUser?.email}</strong>?
+              <br />
+              <br />
+              Todos os dados deste usuário no Lovable serão removidos permanentemente.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleting}
+              className="border-gray-600 text-gray-200 hover:bg-gray-700 hover:text-white"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleDeleteUser} 
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleting ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Sim, Excluir Permanentemente
                 </>
               )}
             </Button>

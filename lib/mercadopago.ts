@@ -1,239 +1,277 @@
 /**
- * Integração com Mercado Pago
- * 
- * Documentação: https://www.mercadopago.com.br/developers/pt/docs
- * 
- * Para usar:
- * 1. Criar conta no Mercado Pago: https://www.mercadopago.com.br
- * 2. Obter credenciais em: https://www.mercadopago.com.br/developers/panel/credentials
- * 3. Adicionar no .env.local:
- *    MERCADOPAGO_ACCESS_TOKEN=seu_access_token_aqui
- *    NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY=sua_public_key_aqui
+ * Integração com Mercado Pago - API de Pagamentos
+ * Documentação: https://www.mercadopago.com.br/developers/pt/docs/checkout-api/landing
  */
 
-// Tipos
-export interface CheckoutData {
-  email: string
-  name: string
-  cpf: string
-  items: Array<{
-    title: string
-    quantity: number
-    unit_price: number
-  }>
-  payment_method: "credit_card" | "pix"
+export interface MercadoPagoPaymentData {
+  customer: {
+    name: string
+    email: string
+    phone: string
+    cpf: string
+  }
+  amount: number
+  payment_method: 'pix' | 'credit_card'
   card_data?: {
     number: string
-    expiration_month: string
-    expiration_year: string
+    holder_name: string
+    exp_month: string
+    exp_year: string
     cvv: string
+    installments?: number
   }
 }
 
-export interface PaymentResponse {
-  id: string
-  status: "approved" | "pending" | "rejected"
-  status_detail: string
-  payment_method_id: string
-  qr_code?: string // Para PIX
-  qr_code_base64?: string // Para PIX
-  ticket_url?: string
+export interface MercadoPagoPaymentResult {
+  success: boolean
+  payment_id: string
+  status: 'approved' | 'pending' | 'rejected' | 'in_process'
+  status_detail?: string
+  qr_code?: string
+  qr_code_base64?: string
+  error?: string
 }
 
-/**
- * Cria uma preferência de pagamento no Mercado Pago
- * Usado para redirecionar para checkout do Mercado Pago (opcional)
- */
-export async function createPreference(data: CheckoutData): Promise<any> {
+export async function processPayment(
+  data: MercadoPagoPaymentData
+): Promise<MercadoPagoPaymentResult> {
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
 
   if (!accessToken) {
-    throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado")
+    return {
+      success: false,
+      payment_id: '',
+      status: 'rejected',
+      error: 'MERCADOPAGO_ACCESS_TOKEN não configurado'
+    }
   }
 
-  const response = await fetch("https://api.mercadopago.com/checkout/preferences", {
-    method: "POST",
+  console.log(`💳 Mercado Pago: Processando ${data.payment_method}...`)
+
+  try {
+    if (data.payment_method === 'pix') {
+      return await processPixPayment(data, accessToken)
+    } else {
+      return await processCreditCardPayment(data, accessToken)
+    }
+  } catch (error: any) {
+    console.error('❌ Erro Mercado Pago:', error.message)
+    return {
+      success: false,
+      payment_id: '',
+      status: 'rejected',
+      error: error.message
+    }
+  }
+}
+
+async function processPixPayment(
+  data: MercadoPagoPaymentData,
+  accessToken: string
+): Promise<MercadoPagoPaymentResult> {
+  console.log('🔵 Gerando PIX no Mercado Pago...')
+
+  const response = await fetch('https://api.mercadopago.com/v1/payments', {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+      'X-Idempotency-Key': `pix-${data.customer.email}-${Date.now()}`
     },
     body: JSON.stringify({
-      items: data.items,
+      transaction_amount: data.amount,
+      description: 'Gravador Médico - Acesso Vitalício',
+      payment_method_id: 'pix',
       payer: {
-        name: data.name,
-        email: data.email,
+        email: data.customer.email,
+        first_name: data.customer.name.split(' ')[0],
+        last_name: data.customer.name.split(' ').slice(1).join(' ') || data.customer.name.split(' ')[0],
         identification: {
-          type: "CPF",
-          number: data.cpf.replace(/\D/g, ""),
-        },
+          type: 'CPF',
+          number: data.customer.cpf.replace(/\D/g, '')
+        }
       },
-      back_urls: {
-        success: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success`,
-        failure: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/failure`,
-        pending: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/pending`,
-      },
-      auto_return: "approved",
-      statement_descriptor: "GRAVADOR MEDICO",
-      external_reference: `ORDER-${Date.now()}`,
-    }),
+      notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/mercadopago`,
+      statement_descriptor: 'GRAVADOR MEDICO',
+      external_reference: `MP-${Date.now()}`
+    })
   })
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.message || "Erro ao criar preferência")
+    console.error('❌ Erro API Mercado Pago:', error)
+    return {
+      success: false,
+      payment_id: '',
+      status: 'rejected',
+      error: error.message || 'Erro ao gerar PIX'
+    }
   }
 
-  return response.json()
+  const payment = await response.json()
+  
+  console.log('✅ PIX gerado:', payment.id)
+
+  return {
+    success: true,
+    payment_id: payment.id,
+    status: payment.status,
+    status_detail: payment.status_detail,
+    qr_code: payment.point_of_interaction?.transaction_data?.qr_code,
+    qr_code_base64: payment.point_of_interaction?.transaction_data?.qr_code_base64
+  }
 }
 
-/**
- * Processa pagamento com cartão de crédito
- */
-export async function processCardPayment(data: CheckoutData): Promise<PaymentResponse> {
-  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
+async function processCreditCardPayment(
+  data: MercadoPagoPaymentData,
+  accessToken: string
+): Promise<MercadoPagoPaymentResult> {
+  console.log('💳 Processando cartão no Mercado Pago...')
 
-  if (!accessToken) {
-    throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado")
+  if (!data.card_data) {
+    return {
+      success: false,
+      payment_id: '',
+      status: 'rejected',
+      error: 'Dados do cartão não fornecidos'
+    }
+  }
+  
+  const cardToken = await createCardToken(data.card_data, accessToken)
+
+  if (!cardToken) {
+    return {
+      success: false,
+      payment_id: '',
+      status: 'rejected',
+      error: 'Falha ao tokenizar cartão'
+    }
   }
 
-  // Calcula o total
-  const amount = data.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0)
-
-  const response = await fetch("https://api.mercadopago.com/v1/payments", {
-    method: "POST",
+  const response = await fetch('https://api.mercadopago.com/v1/payments', {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-      "X-Idempotency-Key": `${data.email}-${Date.now()}`, // Evita duplicação
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+      'X-Idempotency-Key': `card-${data.customer.email}-${Date.now()}`
     },
     body: JSON.stringify({
-      transaction_amount: amount,
-      description: data.items.map((i) => i.title).join(", "),
-      payment_method_id: "credit_card", // ou 'debit_card'
+      transaction_amount: data.amount,
+      token: cardToken,
+      description: 'Gravador Médico - Acesso Vitalício',
+      installments: data.card_data.installments || 1,
+      payment_method_id: 'visa',
       payer: {
-        email: data.email,
-        first_name: data.name.split(" ")[0],
-        last_name: data.name.split(" ").slice(1).join(" "),
+        email: data.customer.email,
         identification: {
-          type: "CPF",
-          number: data.cpf.replace(/\D/g, ""),
-        },
+          type: 'CPF',
+          number: data.customer.cpf.replace(/\D/g, '')
+        }
       },
-      // Token do cartão (precisa ser gerado no frontend com Mercado Pago SDK)
-      token: "CARD_TOKEN_HERE", // Substituir pelo token gerado no frontend
-      installments: 1,
-      statement_descriptor: "GRAVADOR MEDICO",
-      external_reference: `ORDER-${Date.now()}`,
-    }),
+      notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/mercadopago`,
+      statement_descriptor: 'GRAVADOR MEDICO',
+      external_reference: `MP-${Date.now()}`
+    })
   })
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.message || "Erro ao processar pagamento")
+    console.error('❌ Erro API Mercado Pago:', error)
+    return {
+      success: false,
+      payment_id: '',
+      status: 'rejected',
+      error: error.message || error.cause?.[0]?.description || 'Pagamento recusado'
+    }
   }
 
-  return response.json()
+  const payment = await response.json()
+  
+  console.log(`${payment.status === 'approved' ? '✅' : '⚠️'} Cartão processado:`, payment.status)
+
+  return {
+    success: payment.status === 'approved',
+    payment_id: payment.id,
+    status: payment.status,
+    status_detail: payment.status_detail
+  }
 }
 
-/**
- * Gera pagamento PIX
- */
-export async function generatePixPayment(data: CheckoutData): Promise<PaymentResponse> {
-  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
-
-  if (!accessToken) {
-    throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado")
-  }
-
-  // Calcula o total
-  const amount = data.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0)
-
-  const response = await fetch("https://api.mercadopago.com/v1/payments", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-      "X-Idempotency-Key": `${data.email}-${Date.now()}`,
-    },
-    body: JSON.stringify({
-      transaction_amount: amount,
-      description: data.items.map((i) => i.title).join(", "),
-      payment_method_id: "pix",
-      payer: {
-        email: data.email,
-        first_name: data.name.split(" ")[0],
-        last_name: data.name.split(" ").slice(1).join(" "),
-        identification: {
-          type: "CPF",
-          number: data.cpf.replace(/\D/g, ""),
-        },
+async function createCardToken(
+  cardData: NonNullable<MercadoPagoPaymentData['card_data']>,
+  accessToken: string
+): Promise<string | null> {
+  try {
+    const response = await fetch('https://api.mercadopago.com/v1/card_tokens', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
       },
-      statement_descriptor: "GRAVADOR MEDICO",
-      external_reference: `ORDER-${Date.now()}`,
-    }),
-  })
+      body: JSON.stringify({
+        card_number: cardData.number.replace(/\s/g, ''),
+        cardholder: {
+          name: cardData.holder_name
+        },
+        security_code: cardData.cvv,
+        expiration_month: parseInt(cardData.exp_month),
+        expiration_year: parseInt(cardData.exp_year)
+      })
+    })
 
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.message || "Erro ao gerar PIX")
+    if (!response.ok) {
+      const error = await response.json()
+      console.error('❌ Erro ao tokenizar cartão:', error)
+      return null
+    }
+
+    const token = await response.json()
+    return token.id
+  } catch (error) {
+    console.error('❌ Erro na tokenização:', error)
+    return null
   }
-
-  return response.json()
 }
 
-/**
- * Consulta status de um pagamento
- */
-export async function getPaymentStatus(paymentId: string): Promise<PaymentResponse> {
+export async function getPaymentStatus(paymentId: string): Promise<any> {
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
 
   if (!accessToken) {
-    throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado")
+    throw new Error('MERCADOPAGO_ACCESS_TOKEN não configurado')
   }
 
   const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
     headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+      'Authorization': `Bearer ${accessToken}`
+    }
   })
 
   if (!response.ok) {
-    throw new Error("Erro ao consultar pagamento")
+    throw new Error('Erro ao consultar pagamento')
   }
 
   return response.json()
 }
 
-/**
- * Webhook handler para notificações do Mercado Pago
- * Adicionar em: app/api/webhook/mercadopago/route.ts
- */
-export async function handleWebhook(body: any) {
-  // Mercado Pago envia notificações de mudança de status
-  const { type, data } = body
+export async function refundPayment(paymentId: string): Promise<any> {
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
 
-  if (type === "payment") {
-    const paymentId = data.id
-    const payment = await getPaymentStatus(paymentId)
-
-    // Processar conforme status
-    switch (payment.status) {
-      case "approved":
-        // Liberar acesso ao produto
-        console.log("Pagamento aprovado:", paymentId)
-        break
-      case "pending":
-        // Aguardando pagamento (PIX)
-        console.log("Pagamento pendente:", paymentId)
-        break
-      case "rejected":
-        // Pagamento recusado
-        console.log("Pagamento recusado:", paymentId)
-        break
-    }
-
-    return payment
+  if (!accessToken) {
+    throw new Error('MERCADOPAGO_ACCESS_TOKEN não configurado')
   }
 
-  return null
+  const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}/refunds`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`
+    }
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.message || 'Erro ao estornar pagamento')
+  }
+
+  return response.json()
 }

@@ -7,15 +7,21 @@
 import { createClient } from '@supabase/supabase-js'
 
 const LOVABLE_EDGE_FUNCTION_URL = process.env.NEXT_PUBLIC_LOVABLE_EDGE_FUNCTION_URL || 
-  'https://seu-projeto-lovable.supabase.co/functions/v1/admin-user-manager'
+  'https://acouwzdniytqhaesgtpr.supabase.co/functions/v1/admin-user-manager'
 
 const API_SECRET = 'webhook-appmax-2026-secure-key'
 
-// Cliente Supabase local para logs
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+// Função helper para criar cliente Supabase (apenas server-side)
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Supabase credentials not configured')
+  }
+
+  return createClient(supabaseUrl, supabaseServiceKey)
+}
 
 // =====================================================
 // TIPOS
@@ -30,6 +36,7 @@ export interface LovableUser {
   email_confirmed_at?: string
   role?: string
   phone?: string
+  banned_until?: string | null
 }
 
 export interface CreateUserPayload {
@@ -63,6 +70,7 @@ export interface IntegrationLog {
 
 async function logAction(log: IntegrationLog): Promise<string | null> {
   try {
+    const supabase = getSupabaseClient()
     const { data, error } = await supabase
       .from('integration_logs')
       .insert(log)
@@ -219,7 +227,7 @@ export async function resetLovableUserPassword(payload: ResetPasswordPayload): P
     console.log('🔑 Resetando senha do usuário:', payload.userId)
 
     const response = await fetch(LOVABLE_EDGE_FUNCTION_URL, {
-      method: 'PATCH',
+      method: 'PUT', // ✅ Edge Function usa PUT, não PATCH
       headers: {
         'x-api-secret': API_SECRET,
         'Content-Type': 'application/json',
@@ -268,6 +276,194 @@ export async function resetLovableUserPassword(payload: ResetPasswordPayload): P
 }
 
 // =====================================================
+// DESATIVAR USUÁRIO
+// =====================================================
+
+export async function deactivateLovableUser(userId: string): Promise<{
+  success: boolean
+  message?: string
+  error?: string
+}> {
+  const startTime = Date.now()
+
+  try {
+    console.log('🔒 Desativando usuário:', userId)
+
+    const response = await fetch(LOVABLE_EDGE_FUNCTION_URL, {
+      method: 'PATCH',
+      headers: {
+        'x-api-secret': API_SECRET,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, action: 'ban' }),
+    })
+
+    const duration = Date.now() - startTime
+    const data = await response.json()
+
+    // Log da ação
+    await logAction({
+      action: 'deactivate_user',
+      status: response.ok ? 'success' : 'error',
+      user_id: userId,
+      details: { duration },
+      http_status_code: response.status,
+      request_payload: { userId, action: 'ban' },
+      response_payload: data,
+    })
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Erro ao desativar usuário')
+    }
+
+    return {
+      success: true,
+      message: data.message,
+    }
+  } catch (error: any) {
+    console.error('❌ Erro ao desativar usuário:', error)
+
+    await logAction({
+      action: 'deactivate_user',
+      status: 'error',
+      user_id: userId,
+      error_message: error.message,
+      details: { duration: Date.now() - startTime },
+    })
+
+    return {
+      success: false,
+      error: error.message,
+    }
+  }
+}
+
+// =====================================================
+// REATIVAR USUÁRIO
+// =====================================================
+
+export async function reactivateLovableUser(userId: string): Promise<{
+  success: boolean
+  message?: string
+  error?: string
+}> {
+  const startTime = Date.now()
+
+  try {
+    console.log('✅ Reativando usuário:', userId)
+
+    const response = await fetch(LOVABLE_EDGE_FUNCTION_URL, {
+      method: 'PATCH',
+      headers: {
+        'x-api-secret': API_SECRET,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, action: 'unban' }),
+    })
+
+    const duration = Date.now() - startTime
+    const data = await response.json()
+
+    // Log da ação
+    await logAction({
+      action: 'reactivate_user',
+      status: response.ok ? 'success' : 'error',
+      user_id: userId,
+      details: { duration },
+      http_status_code: response.status,
+      request_payload: { userId, action: 'unban' },
+      response_payload: data,
+    })
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Erro ao reativar usuário')
+    }
+
+    return {
+      success: true,
+      message: data.message,
+    }
+  } catch (error: any) {
+    console.error('❌ Erro ao reativar usuário:', error)
+
+    await logAction({
+      action: 'reactivate_user',
+      status: 'error',
+      user_id: userId,
+      error_message: error.message,
+      details: { duration: Date.now() - startTime },
+    })
+
+    return {
+      success: false,
+      error: error.message,
+    }
+  }
+}
+
+// =====================================================
+// EXCLUIR USUÁRIO
+// =====================================================
+
+export async function deleteLovableUser(userId: string): Promise<{
+  success: boolean
+  message?: string
+  error?: string
+}> {
+  const startTime = Date.now()
+
+  try {
+    console.log('🗑️ Excluindo usuário:', userId)
+
+    const response = await fetch(`${LOVABLE_EDGE_FUNCTION_URL}?userId=${userId}`, {
+      method: 'DELETE',
+      headers: {
+        'x-api-secret': API_SECRET,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const duration = Date.now() - startTime
+    const data = await response.json()
+
+    // Log da ação
+    await logAction({
+      action: 'delete_user',
+      status: response.ok ? 'success' : 'error',
+      user_id: userId,
+      details: { duration },
+      http_status_code: response.status,
+      request_payload: { userId },
+      response_payload: data,
+    })
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Erro ao excluir usuário')
+    }
+
+    return {
+      success: true,
+      message: data.message,
+    }
+  } catch (error: any) {
+    console.error('❌ Erro ao excluir usuário:', error)
+
+    await logAction({
+      action: 'delete_user',
+      status: 'error',
+      user_id: userId,
+      error_message: error.message,
+      details: { duration: Date.now() - startTime },
+    })
+
+    return {
+      success: false,
+      error: error.message,
+    }
+  }
+}
+
+// =====================================================
 // BUSCAR LOGS (Para tela de auditoria)
 // =====================================================
 
@@ -281,6 +477,7 @@ export async function getIntegrationLogs(filters?: {
   error?: string
 }> {
   try {
+    const supabase = getSupabaseClient()
     let query = supabase
       .from('integration_logs')
       .select('*')
