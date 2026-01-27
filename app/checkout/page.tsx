@@ -8,6 +8,7 @@ import Autoplay from 'embla-carousel-autoplay'
 import { saveAbandonedCart, markCartAsRecovered } from '@/lib/abandonedCart'
 import { supabase } from '@/lib/supabase'
 import { useMercadoPago } from '@/hooks/useMercadoPago'
+import { validateCPF, formatCPF } from '@/lib/cpf'
 import {
   Check,
   Clock,
@@ -57,6 +58,14 @@ export default function CheckoutPage() {
   
   // Form data - Etapa 1
   const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    cpf: "",
+  })
+
+  // Erros de validação
+  const [formErrors, setFormErrors] = useState({
     name: "",
     email: "",
     phone: "",
@@ -390,7 +399,15 @@ export default function CheckoutPage() {
 
   // Validações
   const isStep1Valid = () => {
-    return formData.name && formData.email && formData.cpf && formData.cpf.replace(/\D/g, '').length === 11
+    const cpfClean = formData.cpf.replace(/\D/g, '')
+    return (
+      formData.name && 
+      formData.email && 
+      formData.cpf && 
+      cpfClean.length === 11 && 
+      validateCPF(cpfClean) && 
+      !formErrors.cpf
+    )
   }
 
   const isStep3Valid = () => {
@@ -906,13 +923,39 @@ export default function CheckoutPage() {
                           name="document"
                           autoComplete="off"
                           value={formData.cpf}
-                          onChange={(e) => setFormData({ ...formData, cpf: formatCPF(e.target.value) })}
-                          onBlur={handleSaveAbandonedCart}
-                          className="w-full max-w-full px-3 sm:px-4 py-2.5 sm:py-3 border-2 border-gray-200 rounded-xl focus:border-brand-500 focus:outline-none transition-colors text-sm md:text-base box-border"
+                          onChange={(e) => {
+                            const formatted = formatCPF(e.target.value)
+                            setFormData({ ...formData, cpf: formatted })
+                            // Limpa erro ao digitar
+                            if (formErrors.cpf) {
+                              setFormErrors({ ...formErrors, cpf: "" })
+                            }
+                          }}
+                          onBlur={(e) => {
+                            handleSaveAbandonedCart()
+                            // Valida CPF quando usuário sai do campo
+                            const cpf = e.target.value.replace(/\D/g, '')
+                            if (cpf.length === 11 && !validateCPF(cpf)) {
+                              setFormErrors({ ...formErrors, cpf: "CPF inválido" })
+                            } else if (cpf.length > 0 && cpf.length < 11) {
+                              setFormErrors({ ...formErrors, cpf: "CPF incompleto" })
+                            } else {
+                              setFormErrors({ ...formErrors, cpf: "" })
+                            }
+                          }}
+                          className={`w-full max-w-full px-3 sm:px-4 py-2.5 sm:py-3 border-2 ${
+                            formErrors.cpf ? 'border-red-500' : 'border-gray-200'
+                          } rounded-xl focus:border-brand-500 focus:outline-none transition-colors text-sm md:text-base box-border`}
                           placeholder="000.000.000-00"
                           maxLength={14}
                           required
                         />
+                        {formErrors.cpf && (
+                          <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-4 h-4" />
+                            {formErrors.cpf}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
