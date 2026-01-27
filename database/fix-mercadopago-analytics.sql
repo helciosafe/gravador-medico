@@ -12,8 +12,8 @@
 -- Agora busca de SALES (dados reais) em vez de apenas checkout_attempts
 
 CREATE OR REPLACE FUNCTION public.get_analytics_period(
-    start_date TIMESTAMP DEFAULT NOW() - INTERVAL '30 days',
-    end_date TIMESTAMP DEFAULT NOW()
+    start_date TIMESTAMP WITH TIME ZONE DEFAULT NOW() - INTERVAL '30 days',
+    end_date TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 )
 RETURNS TABLE (
     unique_visitors BIGINT,
@@ -169,8 +169,8 @@ FROM mp_attempts mp, fallback_rescues fb, appmax_direct ad;
 -- Função para buscar estatísticas de gateway via RPC
 
 CREATE OR REPLACE FUNCTION public.get_gateway_stats(
-    start_date TIMESTAMP DEFAULT NOW() - INTERVAL '30 days',
-    end_date TIMESTAMP DEFAULT NOW()
+    start_date TIMESTAMP WITH TIME ZONE DEFAULT NOW() - INTERVAL '30 days',
+    end_date TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 )
 RETURNS TABLE (
     gateway TEXT,
