@@ -119,11 +119,11 @@ export default function GatewayStatsCard({ startDate, endDate, days = 30 }: Gate
             <Image 
               src="/mercado-pago-logo.png" 
               alt="Mercado Pago" 
-              width={24} 
-              height={24}
-              className="object-contain"
+              width={80} 
+              height={32}
+              className="object-contain brightness-0 invert"
+              style={{ filter: 'brightness(0) invert(1)' }}
             />
-            <span className="text-sm font-semibold text-blue-300">Mercado Pago</span>
           </div>
           
           {mpStats ? (

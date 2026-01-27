@@ -195,11 +195,11 @@ export default function PaymentsAdminPage() {
           <Image 
             src="/mercado-pago-logo.png" 
             alt="Mercado Pago" 
-            width={12} 
-            height={12}
+            width={48} 
+            height={20}
             className="object-contain"
+            style={{ filter: 'brightness(0) saturate(100%) invert(27%) sepia(93%) saturate(2764%) hue-rotate(203deg) brightness(94%) contrast(98%)' }}
           />
-          Mercado Pago
         </span>
       )
     } else if (gateway === 'appmax' || fallback) {
@@ -328,13 +328,13 @@ export default function PaymentsAdminPage() {
                 className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 shadow-lg text-white"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-blue-100 text-sm font-medium">Mercado Pago</span>
                   <Image 
                     src="/mercado-pago-logo.png" 
                     alt="Mercado Pago" 
-                    width={20} 
-                    height={20}
-                    className="object-contain brightness-0 invert"
+                    width={100} 
+                    height={40}
+                    className="object-contain"
+                    style={{ filter: 'brightness(0) invert(1)' }}
                   />
                 </div>
                 <div className="text-3xl font-black">{stats.mp_sales}</div>

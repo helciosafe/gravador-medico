@@ -217,11 +217,11 @@ export default function SalesPage() {
             <Image 
               src="/mercado-pago-logo.png" 
               alt="Mercado Pago" 
-              width={14} 
-              height={14}
+              width={40} 
+              height={16}
               className="object-contain"
+              style={{ filter: 'brightness(0) saturate(100%) invert(65%) sepia(77%) saturate(3481%) hue-rotate(202deg) brightness(101%) contrast(101%)' }}
             />
-            MP
           </span>
         )
       case 'appmax':
