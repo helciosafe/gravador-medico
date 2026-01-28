@@ -112,8 +112,6 @@ const sortOptions = [
 export default function AdsPage() {
   const [metrics, setMetrics] = useState<AdsMetrics | null>(null);
   const [allCampaigns, setAllCampaigns] = useState<CampaignInsight[]>([]);
-  const [statusMap, setStatusMap] = useState<Map<string, string>>(new Map());
-  const [createdTimeMap, setCreatedTimeMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
@@ -124,29 +122,12 @@ export default function AdsPage() {
   const fetchData = useCallback(async (showRefresh = false, period = selectedPeriod) => {
     if (showRefresh) setRefreshing(true);
     try {
-      const [campaignsRes, statusRes] = await Promise.all([
-        fetch(`/api/ads/insights?period=${period}`),
-        fetch('/api/ads/status')
-      ]);
-      
+      // A API de insights agora já retorna dados enriquecidos com status e created_time
+      const campaignsRes = await fetch(`/api/ads/insights?period=${period}`);
       const campaigns = await campaignsRes.json();
-      const status = await statusRes.json();
       
       const calculatedMetrics = calculateAdsMetrics(Array.isArray(campaigns) ? campaigns : []);
       setMetrics(calculatedMetrics);
-      
-      const statusMapTemp = new Map<string, string>();
-      const createdTimeMapTemp = new Map<string, string>();
-      if (Array.isArray(status)) {
-        status.forEach((s: any) => {
-          statusMapTemp.set(s.id, s.effective_status || s.status);
-          if (s.created_time) {
-            createdTimeMapTemp.set(s.id, s.created_time);
-          }
-        });
-      }
-      setStatusMap(statusMapTemp);
-      setCreatedTimeMap(createdTimeMapTemp);
       setLastUpdate(new Date());
     } catch (error) {
       console.error('Erro ao carregar dados de anúncios:', error);
@@ -187,10 +168,10 @@ export default function AdsPage() {
     
     let result = [...metrics.campaigns];
     
-    // Filtrar por status
+    // Filtrar por status (usando effective_status enriquecido da API)
     if (statusFilter !== 'all') {
       result = result.filter(campaign => {
-        const campaignStatus = statusMap.get(campaign.campaign_id || '') || 'UNKNOWN';
+        const campaignStatus = (campaign as any).effective_status || 'UNKNOWN';
         const normalizedStatus = campaignStatus.toUpperCase();
         
         switch (statusFilter) {
@@ -206,7 +187,7 @@ export default function AdsPage() {
       });
     }
     
-    // Ordenar
+    // Ordenar (os dados já vêm ordenados por created_time da API, mas podemos reordenar)
     result.sort((a, b) => {
       switch (sortBy) {
         case 'spend_desc':
@@ -214,14 +195,14 @@ export default function AdsPage() {
         case 'spend_asc':
           return Number(a.spend || 0) - Number(b.spend || 0);
         case 'date_desc': {
-          // Usar created_time se disponível, senão usar date_start
-          const dateA = createdTimeMap.get(a.campaign_id || '') || a.date_start || '';
-          const dateB = createdTimeMap.get(b.campaign_id || '') || b.date_start || '';
+          // Usar created_time enriquecido da API
+          const dateA = (a as any).created_time || a.date_start || '';
+          const dateB = (b as any).created_time || b.date_start || '';
           return dateB.localeCompare(dateA);
         }
         case 'date_asc': {
-          const dateA = createdTimeMap.get(a.campaign_id || '') || a.date_start || '';
-          const dateB = createdTimeMap.get(b.campaign_id || '') || b.date_start || '';
+          const dateA = (a as any).created_time || a.date_start || '';
+          const dateB = (b as any).created_time || b.date_start || '';
           return dateA.localeCompare(dateB);
         }
         case 'clicks_desc':
@@ -234,7 +215,7 @@ export default function AdsPage() {
     });
     
     return result;
-  }, [metrics?.campaigns, statusFilter, sortBy, statusMap, createdTimeMap]);
+  }, [metrics?.campaigns, statusFilter, sortBy]);
 
   const kpiCards = [
     { 
@@ -588,9 +569,8 @@ export default function AdsPage() {
                 </thead>
                 <tbody>
                   {filteredAndSortedCampaigns.map((campaign, index) => {
-                    const status = campaign.campaign_id 
-                      ? statusMap.get(campaign.campaign_id) || 'UNKNOWN'
-                      : 'UNKNOWN';
+                    // Status vem enriquecido da API
+                    const status = (campaign as any).effective_status || 'UNKNOWN';
                     
                     return (
                       <motion.tr 

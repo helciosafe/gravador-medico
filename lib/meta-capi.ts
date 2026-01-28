@@ -21,7 +21,7 @@ interface MetaConversionEvent {
   zip?: string
   
   // Dados do Evento
-  eventName: 'Purchase' | 'AddToCart' | 'InitiateCheckout' | 'ViewContent'
+  eventName: 'Purchase' | 'AddToCart' | 'InitiateCheckout' | 'ViewContent' | 'Lead' | 'PageView'
   eventTime: number // Unix timestamp
   eventId: string // ID único para deduplicação
   
@@ -57,11 +57,11 @@ function hashData(data: string | undefined): string | undefined {
  * Envia um evento de conversão para o Facebook
  */
 export async function sendMetaConversionEvent(event: MetaConversionEvent) {
-  const pixelId = process.env.META_PIXEL_ID
-  const accessToken = process.env.META_CONVERSION_API_TOKEN
+  const pixelId = process.env.FACEBOOK_PIXEL_ID
+  const accessToken = process.env.FACEBOOK_ACCESS_TOKEN
 
   if (!pixelId || !accessToken) {
-    console.error('❌ META_PIXEL_ID ou META_CONVERSION_API_TOKEN não configurados')
+    console.error('❌ FACEBOOK_PIXEL_ID ou FACEBOOK_ACCESS_TOKEN não configurados')
     return { success: false, error: 'Configuração ausente' }
   }
 
@@ -84,23 +84,29 @@ export async function sendMetaConversionEvent(event: MetaConversionEvent) {
     if (event.fbp) userData.fbp = event.fbp
 
     // Montar Custom Data (dados da compra)
-    const customData: any = {}
+    // ⚠️ IMPORTANTE: value e currency são OBRIGATÓRIOS para Purchase
+    const customData: any = {
+      value: event.value || 0,
+      currency: event.currency || 'BRL'
+    }
     
-    if (event.value) customData.value = event.value
-    if (event.currency) customData.currency = event.currency
     if (event.contentName) customData.content_name = event.contentName
     if (event.contentIds) customData.content_ids = event.contentIds
     if (event.contentType) customData.content_type = event.contentType
     if (event.numItems) customData.num_items = event.numItems
 
+    // Código de teste para validação no Gerenciador de Eventos do Facebook
+    // ⚠️ REMOVER EM PRODUÇÃO após validar!
+    const testEventCode = process.env.META_TEST_EVENT_CODE || null
+
     // Montar payload completo
-    const payload = {
+    const payload: any = {
       data: [
         {
           event_name: event.eventName,
           event_time: event.eventTime,
           event_id: event.eventId, // Deduplicação (mesmo ID do Pixel)
-          event_source_url: event.eventSourceUrl || 'https://seu-site.com',
+          event_source_url: event.eventSourceUrl || 'https://gravadormedico.com.br',
           action_source: 'website',
           user_data: userData,
           custom_data: customData
@@ -108,8 +114,14 @@ export async function sendMetaConversionEvent(event: MetaConversionEvent) {
       ]
     }
 
+    // Adicionar test_event_code se configurado (para testes no Gerenciador de Eventos)
+    if (testEventCode) {
+      payload.test_event_code = testEventCode
+      console.log('🧪 Modo de teste ativo - test_event_code:', testEventCode)
+    }
+
     // Enviar para Meta CAPI
-    const url = `https://graph.facebook.com/v18.0/${pixelId}/events?access_token=${accessToken}`
+    const url = `https://graph.facebook.com/v19.0/${pixelId}/events?access_token=${accessToken}`
     
     const response = await fetch(url, {
       method: 'POST',

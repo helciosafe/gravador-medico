@@ -32,11 +32,11 @@ BEGIN
         SELECT
             COUNT(*) as total_sales,
             COUNT(*) FILTER (WHERE order_status IN ('pending', 'pending_payment', 'processing')) as pending_sales,
-            COUNT(*) FILTER (WHERE order_status IN ('paid', 'approved', 'provisioning', 'active', 'completed', 'delivered')) as paid_sales,
+            COUNT(*) FILTER (WHERE order_status IN ('paid', 'provisioning', 'active', 'approved')) as paid_sales,
             COUNT(*) FILTER (WHERE order_status IN ('cancelled', 'canceled', 'expired', 'refused', 'rejected', 'failed', 'chargeback')) as failed_sales,
-            COALESCE(SUM(total_amount) FILTER (WHERE order_status IN ('paid', 'approved', 'provisioning', 'active', 'completed', 'delivered')), 0) as paid_revenue,
-            COALESCE(SUM(subtotal) FILTER (WHERE order_status IN ('paid', 'approved', 'provisioning', 'active', 'completed', 'delivered')), 0) as gross_revenue,
-            COALESCE(SUM(discount) FILTER (WHERE order_status IN ('paid', 'approved', 'provisioning', 'active', 'completed', 'delivered')), 0) as total_discount
+            COALESCE(SUM(total_amount) FILTER (WHERE order_status IN ('paid', 'provisioning', 'active', 'approved')), 0) as paid_revenue,
+            COALESCE(SUM(subtotal) FILTER (WHERE order_status IN ('paid', 'provisioning', 'active', 'approved')), 0) as gross_revenue,
+            COALESCE(SUM(discount) FILTER (WHERE order_status IN ('paid', 'provisioning', 'active', 'approved')), 0) as total_discount
         FROM public.sales
         WHERE created_at BETWEEN start_date AND end_date
     )

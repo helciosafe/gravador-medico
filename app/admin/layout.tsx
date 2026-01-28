@@ -34,7 +34,8 @@ import {
   Mail,
   ExternalLink,
   Heart,
-  CreditCard
+  CreditCard,
+  Megaphone
 } from 'lucide-react'
 import NotificationBell from '@/components/NotificationBell'
 import { WhatsAppNotificationProvider } from '@/components/WhatsAppNotificationProvider'
@@ -166,14 +167,8 @@ const producaoItems = [
   },
 ]
 
-// Menu de Gestão (Analytics, CRM, Clientes)
+// Menu de Gestão (CRM, Clientes)
 const gestaoItems = [
-  { 
-    icon: TrendingUp, 
-    label: 'Analytics', 
-    href: '/admin/analytics',
-    badge: null
-  },
   { 
     icon: Users, 
     label: 'CRM', 
@@ -189,22 +184,40 @@ const gestaoItems = [
 ]
 
 const menuItems = [
-  // � VISÃO GERAL
+  // 📊 VISÃO GERAL
   { 
     icon: LayoutDashboard, 
     label: 'Visão Geral', 
-    href: '/admin/dashboard',
+    href: '/admin/overview',
     badge: null
   },
   
-  // 💰 PRODUÇÃO (Vendas, Pagamentos, Relatórios)
+  // 📈 ANALYTICS (Separado com destaque)
+  { 
+    icon: BarChart3, 
+    label: 'Analytics', 
+    href: '/admin/analytics',
+    badge: 'GA4',
+    highlight: true
+  },
+  
+  // � ANÚNCIOS (Meta Ads)
+  { 
+    icon: Megaphone, 
+    label: 'Anúncios', 
+    href: '/admin/ads',
+    badge: 'Meta',
+    highlight: true
+  },
+  
+  // �💰 PRODUÇÃO (Vendas, Pagamentos, Relatórios)
   { 
     label: 'Produção', 
     icon: ShoppingBag,
     items: producaoItems
   },
   
-  // � GESTÃO (Analytics, CRM, Clientes)
+  // 👥 GESTÃO (CRM, Clientes)
   { 
     label: 'Gestão', 
     icon: Users,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import BigNumbers from '@/components/dashboard/BigNumbers'
 import ConversionFunnel from '@/components/dashboard/ConversionFunnel'
@@ -11,8 +11,38 @@ import { FraudAnalysisCard } from '@/components/dashboard/FraudAnalysisCard'
 import { SyncAppmaxButton } from '@/components/dashboard/SyncAppmaxButton'
 import { SyncMercadoPagoButton } from '@/components/dashboard/SyncMercadoPagoButton'
 import GatewayStatsCard from '@/components/dashboard/GatewayStatsCard'
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { RefreshCw, Download, MousePointerClick, Link2, Zap, TrendingUp, ArrowRight } from 'lucide-react'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts'
+import { RefreshCw, Download, MousePointerClick, Link2, Zap, TrendingUp, ArrowRight, Activity, BarChart3, Facebook, DollarSign, Eye, Target, PlayCircle, ExternalLink } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { calculateAdsMetrics, AdsMetrics } from '@/lib/meta-marketing'
+
+// Tipos para Analytics
+interface TrafficDataItem {
+  date: string;
+  usuarios: number;
+  visualizacoes: number;
+}
+
+interface RealtimeData {
+  activeUsers: number;
+  topPages?: { page: string; views: number }[];
+}
+
+// Formatar moeda
+const formatCurrencyCompact = (value: number) => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0
+  }).format(value);
+};
+
+// Formatar número compacto
+const formatNumberCompact = (value: number) => {
+  if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+  if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+  return value.toString();
+};
 
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<any | null>(null)
@@ -29,10 +59,50 @@ export default function AdminDashboard() {
     return date.toISOString().split('T')[0]
   })
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0])
+  
+  // Estados para Analytics + META Ads
+  const [realtime, setRealtime] = useState<RealtimeData | null>(null);
+  const [trafficData, setTrafficData] = useState<TrafficDataItem[]>([]);
+  const [fbMetrics, setFbMetrics] = useState<AdsMetrics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+
+  // Carregar dados de Analytics e META Ads
+  const loadAnalyticsData = useCallback(async () => {
+    setAnalyticsLoading(true);
+    try {
+      const [realtimeRes, trafficRes, fbRes] = await Promise.allSettled([
+        fetch('/api/analytics/realtime').then(r => r.json()),
+        fetch('/api/analytics/traffic?period=7d').then(r => r.json()),
+        fetch('/api/ads/insights?period=last_7d').then(r => r.json())
+      ]);
+
+      if (realtimeRes.status === 'fulfilled') {
+        setRealtime(realtimeRes.value);
+      }
+
+      if (trafficRes.status === 'fulfilled' && Array.isArray(trafficRes.value)) {
+        setTrafficData(trafficRes.value);
+      }
+
+      if (fbRes.status === 'fulfilled' && Array.isArray(fbRes.value)) {
+        setFbMetrics(calculateAdsMetrics(fbRes.value));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar analytics:', error);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadAllData()
-  }, [filterType, quickDays, startDate, endDate])
+    loadAnalyticsData()
+    // Auto-refresh realtime a cada 30s
+    const interval = setInterval(() => {
+      fetch('/api/analytics/realtime').then(r => r.json()).then(setRealtime).catch(console.error);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [filterType, quickDays, startDate, endDate, loadAnalyticsData])
 
   const loadAllData = async () => {
     try {
@@ -232,6 +302,243 @@ Relatório gerado automaticamente pelo Gravador Médico
 
       {/* KPIs */}
       <BigNumbers metrics={metrics} loading={loading} periodLabel={periodLabel} />
+
+      {/* ============ ANALYTICS + META ADS SECTION ============ */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Card Realtime */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-br from-gray-800/60 to-gray-900/80 backdrop-blur-xl rounded-2xl border border-white/10 p-6"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <Activity className="h-5 w-5 text-green-400" />
+            <span className="text-gray-300 font-medium">Ao Vivo</span>
+            <span className="relative flex h-2 w-2 ml-auto">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+          </div>
+          
+          {analyticsLoading ? (
+            <div className="h-20 bg-white/10 rounded-lg animate-pulse" />
+          ) : (
+            <>
+              <motion.div
+                key={realtime?.activeUsers}
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="text-5xl font-bold text-green-400 mb-3"
+              >
+                {realtime?.activeUsers || 0}
+              </motion.div>
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Usuários ativos agora</p>
+              {realtime?.topPages?.slice(0, 2).map((page, i) => (
+                <div key={i} className="flex items-center justify-between text-xs text-gray-400">
+                  <span className="truncate max-w-[150px]">{page.page}</span>
+                  <span className="text-green-400">{page.views}</span>
+                </div>
+              ))}
+            </>
+          )}
+        </motion.div>
+
+        {/* Gráfico de Tráfego */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="lg:col-span-3 bg-gradient-to-br from-gray-800/60 to-gray-900/80 backdrop-blur-xl rounded-2xl border border-white/10 p-6"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <BarChart3 className="h-5 w-5 text-blue-400" />
+              <span className="text-white font-medium">Tráfego do Site</span>
+              <span className="text-gray-500 text-sm">Últimos 7 dias</span>
+            </div>
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-500" />
+                <span className="text-gray-400">Visualizações: {formatNumberCompact(trafficData.reduce((s, d) => s + d.visualizacoes, 0))}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-purple-500" />
+                <span className="text-gray-400">Usuários: {formatNumberCompact(trafficData.reduce((s, d) => s + d.usuarios, 0))}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="h-48">
+            {analyticsLoading ? (
+              <div className="h-full bg-white/10 rounded-lg animate-pulse" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trafficData}>
+                  <defs>
+                    <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.3} />
+                  <XAxis dataKey="date" stroke="#9ca3af" fontSize={11} />
+                  <YAxis stroke="#9ca3af" fontSize={11} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                    labelStyle={{ color: '#fff' }}
+                  />
+                  <Area type="monotone" dataKey="visualizacoes" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorViews)" name="Visualizações" />
+                  <Area type="monotone" dataKey="usuarios" stroke="#a855f7" strokeWidth={2} fillOpacity={1} fill="url(#colorUsers)" name="Usuários" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </motion.div>
+      </div>
+
+      {/* META Ads KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-gradient-to-br from-gray-800/60 to-gray-900/80 backdrop-blur-xl rounded-2xl border border-white/10 p-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-green-500/20">
+              <DollarSign className="h-5 w-5 text-green-400" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">Investimento META</p>
+              <p className="text-xl font-bold text-white">
+                {analyticsLoading ? '...' : formatCurrencyCompact(fbMetrics?.totalSpend || 0)}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="bg-gradient-to-br from-gray-800/60 to-gray-900/80 backdrop-blur-xl rounded-2xl border border-white/10 p-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-blue-500/20">
+              <MousePointerClick className="h-5 w-5 text-blue-400" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">Cliques</p>
+              <p className="text-xl font-bold text-white">
+                {analyticsLoading ? '...' : formatNumberCompact(fbMetrics?.totalClicks || 0)}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-gradient-to-br from-gray-800/60 to-gray-900/80 backdrop-blur-xl rounded-2xl border border-white/10 p-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-purple-500/20">
+              <Eye className="h-5 w-5 text-purple-400" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">Impressões</p>
+              <p className="text-xl font-bold text-white">
+                {analyticsLoading ? '...' : formatNumberCompact(fbMetrics?.totalImpressions || 0)}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="bg-gradient-to-br from-gray-800/60 to-gray-900/80 backdrop-blur-xl rounded-2xl border border-white/10 p-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-cyan-500/20">
+              <TrendingUp className="h-5 w-5 text-cyan-400" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">CTR Médio</p>
+              <p className="text-xl font-bold text-white">
+                {analyticsLoading ? '...' : `${(fbMetrics?.avgCtr || 0).toFixed(2)}%`}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Campanhas Ativas */}
+      {fbMetrics && fbMetrics.campaigns.filter(c => (c as any).effective_status === 'ACTIVE').length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-gradient-to-br from-gray-800/60 to-gray-900/80 backdrop-blur-xl rounded-2xl border border-white/10 p-6"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Facebook className="h-5 w-5 text-blue-500" />
+              <span className="text-white font-medium">Campanhas Ativas</span>
+              <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-xs font-medium">
+                {fbMetrics.campaigns.filter(c => (c as any).effective_status === 'ACTIVE').length} ativas
+              </span>
+            </div>
+            <Link 
+              href="/admin/ads"
+              className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+            >
+              Ver todas <ExternalLink className="h-3 w-3" />
+            </Link>
+          </div>
+          
+          <div className="space-y-2">
+            {fbMetrics.campaigns
+              .filter(c => (c as any).effective_status === 'ACTIVE')
+              .slice(0, 3)
+              .map((campaign, index) => (
+              <div
+                key={campaign.campaign_id || index}
+                className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-500/20">
+                    <PlayCircle className="h-4 w-4 text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white text-sm">{campaign.campaign_name}</p>
+                    <p className="text-xs text-gray-500">
+                      Criada em {(campaign as any).created_time?.slice(0, 10) || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="text-right">
+                    <p className="font-medium text-green-400">{formatCurrencyCompact(Number(campaign.spend || 0))}</p>
+                    <p className="text-xs text-gray-500">Gasto</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-blue-400">{formatNumberCompact(Number(campaign.clicks || 0))}</p>
+                    <p className="text-xs text-gray-500">Cliques</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+      {/* ============ FIM ANALYTICS + META ADS SECTION ============ */}
 
       {/* Gateway Performance Stats */}
       <GatewayStatsCard 

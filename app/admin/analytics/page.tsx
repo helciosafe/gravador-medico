@@ -1,476 +1,410 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { Card } from '@/components/ui/card'
-import { 
-  BarChart3, Users, TrendingUp, Target, DollarSign, Clock, 
-  Eye, Zap, MousePointer, Globe, Smartphone, Activity, 
-  ShoppingCart, UserCheck, RefreshCw
-} from 'lucide-react'
-import { 
-  BarChart, Bar, LineChart, Line, AreaChart, Area, 
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
-  ResponsiveContainer, PieChart, Pie, Cell, RadarChart, 
-  PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
-} from 'recharts'
-import { motion } from 'framer-motion'
+import { useEffect, useState, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
+import {
+  Activity, Users, Eye, MousePointerClick, Globe,
+  FileText, Share2, RefreshCw, TrendingUp, ArrowDownRight, 
+  BarChart3, Zap, Timer, MapPin, Smartphone, Monitor, Tablet, Chrome,
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-interface HealthMetrics {
-  unique_visitors: number
-  sales: number
-  revenue: number
-  average_order_value: number
-  avg_time_seconds: number
-  conversion_rate: number
-  visitors_change: number
-  revenue_change: number
-  aov_change: number
-  time_change: number
-}
+interface TrafficData { date: string; usuarios: number; visualizacoes: number; }
+interface RealtimeData { activeUsers: number; pages: { page: string; users: number }[]; }
+interface TopPage { page: string; title: string; views: number; }
+interface Country { country: string; users: number; flag?: string; }
+interface TrafficSource { source: string; users: number; sessions: number; }
+interface KPIData { totalUsers: number; totalViews: number; totalEvents: number; totalSessions: number; }
+interface CityData { city: string; users: number; }
+interface AgeData { age: string; users: number; }
+interface DeviceData { device: string; users: number; }
+interface BrowserData { browser: string; users: number; }
 
-interface MarketingAttribution {
-  source: string
-  medium: string
-  campaign: string
-  visitors: number
-  sessions: number
-  sales_count: number
-  total_revenue: number
-  conversion_rate: number
-  average_order_value: number
-  primary_device: string
-}
+const COLORS = ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e'];
 
-interface FunnelData {
-  step_visitors: number
-  step_interested: number
-  step_checkout_started: number
-  step_purchased: number
-}
+const countryFlags: Record<string, string> = {
+  'Brazil': '\u{1F1E7}\u{1F1F7}', 'United States': '\u{1F1FA}\u{1F1F8}', 'Portugal': '\u{1F1F5}\u{1F1F9}',
+  'Argentina': '\u{1F1E6}\u{1F1F7}', 'Mexico': '\u{1F1F2}\u{1F1FD}', 'Spain': '\u{1F1EA}\u{1F1F8}',
+  'Germany': '\u{1F1E9}\u{1F1EA}', 'France': '\u{1F1EB}\u{1F1F7}', 'United Kingdom': '\u{1F1EC}\u{1F1E7}',
+};
 
-interface DeviceStats {
-  device: string
-  visitors: number
-  sales: number
-  revenue: number
-  [key: string]: string | number // Index signature para compatibilidade com Recharts
-}
+const GlassCard = ({ children, className = '', gradient = false }: { children: React.ReactNode; className?: string; gradient?: boolean }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5 }}
+    className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-800/40 to-gray-900/60 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/20 hover:shadow-purple-500/10 hover:border-purple-500/20 transition-all duration-500 ${gradient ? 'before:absolute before:inset-0 before:bg-gradient-to-br before:from-purple-500/10 before:to-transparent before:pointer-events-none' : ''} ${className}`}
+  >
+    {children}
+  </motion.div>
+);
 
-const COLORS = ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#F97316']
+const AnimatedNumber = ({ value }: { value: number }) => (
+  <AnimatePresence mode="wait">
+    <motion.span key={value} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="tabular-nums">
+      {value >= 1000 ? (value / 1000).toFixed(1) + 'K' : value}
+    </motion.span>
+  </AnimatePresence>
+);
 
-export default function AnalyticsPageNew() {
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [health, setHealth] = useState<HealthMetrics | null>(null)
-  const [attribution, setAttribution] = useState<MarketingAttribution[]>([])
-  const [funnel, setFunnel] = useState<FunnelData | null>(null)
-  const [onlineVisitors, setOnlineVisitors] = useState(0)
-  const [deviceStats, setDeviceStats] = useState<DeviceStats[]>([])
+export default function AnalyticsPage() {
+  const [traffic, setTraffic] = useState<TrafficData[]>([]);
+  const [realtime, setRealtime] = useState<RealtimeData | null>(null);
+  const [topPages, setTopPages] = useState<TopPage[]>([]);
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [sources, setSources] = useState<TrafficSource[]>([]);
+  const [kpis, setKPIs] = useState<KPIData | null>(null);
+  const [cities, setCities] = useState<CityData[]>([]);
+  const [ages, setAges] = useState<AgeData[]>([]);
+  const [devices, setDevices] = useState<DeviceData[]>([]);
+  const [browsers, setBrowsers] = useState<BrowserData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  useEffect(() => {
-    loadAnalytics()
-    const interval = setInterval(loadOnlineVisitors, 3000)
-    return () => clearInterval(interval)
-  }, [])
-
-  async function loadAnalytics() {
+  const fetchData = useCallback(async (showRefresh = false) => {
+    if (showRefresh) setRefreshing(true);
     try {
-      setRefreshing(true)
-      const response = await fetch('/api/admin/analytics', {
-        credentials: 'include'
-      })
-
-      if (!response.ok) {
-        throw new Error('Falha ao carregar analytics')
-      }
-
-      const result = await response.json()
-
-      if (result.health) setHealth(result.health)
-      if (result.attribution) setAttribution(result.attribution)
-      if (result.funnel) setFunnel(result.funnel)
-
-      // Calcular estatísticas por dispositivo
-      if (result.attribution) {
-        const deviceMap = new Map<string, DeviceStats>()
-        
-        result.attribution.forEach((attr: MarketingAttribution) => {
-          const device = attr.primary_device || 'Desconhecido'
-          const existing = deviceMap.get(device) || { device, visitors: 0, sales: 0, revenue: 0 }
-          
-          deviceMap.set(device, {
-            device,
-            visitors: existing.visitors + attr.visitors,
-            sales: existing.sales + (attr.sales_count || 0),
-            revenue: existing.revenue + (attr.total_revenue || 0)
-          })
-        })
-        
-        setDeviceStats(Array.from(deviceMap.values()))
-      }
-
-      setLoading(false)
+      const [trafficRes, realtimeRes, pagesRes, countriesRes, sourcesRes, kpisRes, citiesRes, agesRes, devicesRes, browsersRes] = await Promise.all([
+        fetch('/api/analytics/traffic'), fetch('/api/analytics/realtime'), fetch('/api/analytics/top-pages'),
+        fetch('/api/analytics/countries'), fetch('/api/analytics/sources'), fetch('/api/analytics/kpis'),
+        fetch('/api/analytics/cities'), fetch('/api/analytics/age'), fetch('/api/analytics/devices'), fetch('/api/analytics/browsers'),
+      ]);
+      const [trafficData, realtimeData, pagesData, countriesData, sourcesData, kpisData, citiesData, agesData, devicesData, browsersData] = await Promise.all([
+        trafficRes.json(), realtimeRes.json(), pagesRes.json(), countriesRes.json(), sourcesRes.json(), kpisRes.json(),
+        citiesRes.json(), agesRes.json(), devicesRes.json(), browsersRes.json(),
+      ]);
+      setTraffic(trafficData);
+      setRealtime(realtimeData);
+      setTopPages(pagesData);
+      setCountries(countriesData.map((c: Country) => ({ ...c, flag: countryFlags[c.country] || '\u{1F30D}' })));
+      setSources(sourcesData);
+      setKPIs(kpisData);
+      setCities(Array.isArray(citiesData) ? citiesData : []);
+      setAges(Array.isArray(agesData) ? agesData : []);
+      setDevices(Array.isArray(devicesData) ? devicesData : []);
+      setBrowsers(Array.isArray(browsersData) ? browsersData : []);
+      setLastUpdate(new Date());
     } catch (error) {
-      console.error('Erro ao carregar analytics:', error)
-      setLoading(false)
+      console.error('Erro ao carregar analytics:', error);
     } finally {
-      setRefreshing(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }
+  }, []);
 
-  async function loadOnlineVisitors() {
-    try {
-      const response = await fetch('/api/admin/analytics/online', {
-        credentials: 'include'
-      })
+  useEffect(() => { fetchData(); const interval = setInterval(() => fetchData(), 60000); return () => clearInterval(interval); }, [fetchData]);
 
-      if (!response.ok) return
-
-      const data = await response.json()
-      setOnlineVisitors(data.online_count || 0)
-    } catch (error) {
-      console.error('Erro ao buscar visitantes online:', error)
-    }
-  }
-
-  if (loading || !health) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-8 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Carregando Analytics...</p>
+      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="flex items-center gap-4"><Skeleton className="h-12 w-12 rounded-2xl" /><Skeleton className="h-8 w-64" /></div>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-36 rounded-2xl" />)}</div>
+          <Skeleton className="h-96 rounded-2xl" />
         </div>
       </div>
-    )
+    );
   }
 
-  const funnelChartData = funnel ? [
-    { name: 'Visitantes', value: funnel.step_visitors || 0, fill: '#8B5CF6' },
-    { name: 'Interessados', value: funnel.step_interested || 0, fill: '#06B6D4' },
-    { name: 'Checkout', value: funnel.step_checkout_started || 0, fill: '#10B981' },
-    { name: 'Compraram', value: funnel.step_purchased || 0, fill: '#F59E0B' },
-  ] : []
+  const avgSessionDuration = kpis ? Math.round((kpis.totalSessions / kpis.totalUsers) * 100) / 100 : 0;
+  const bounceRate = kpis ? Math.round((1 - kpis.totalSessions / kpis.totalViews) * 100) : 0;
+  const pagesPerSession = kpis && kpis.totalSessions > 0 ? (kpis.totalViews / kpis.totalSessions).toFixed(1) : '0';
+  const engagement = kpis && kpis.totalUsers > 0 ? (kpis.totalEvents / kpis.totalUsers).toFixed(1) : '0';
+  const maxPageViews = topPages.length > 0 ? Math.max(...topPages.map(p => p.views)) : 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-8">
-      <div className="max-w-[1600px] mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-4xl font-black text-white flex items-center gap-3">
-              <BarChart3 className="w-10 h-10 text-brand-400" />
-              Painel de Analytics
-            </h1>
-            <p className="text-gray-400 mt-2">
-              Análise completa de desempenho e atribuição de marketing
-            </p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-6">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl" />
+      </div>
+
+      <div className="relative max-w-7xl mx-auto space-y-6">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-gradient-to-r from-green-500/20 to-green-600/20 backdrop-blur-sm rounded-2xl px-6 py-4 border border-green-500/30"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
-                <div>
-                  <p className="text-xs text-gray-400">Online Agora</p>
-                  <p className="text-2xl font-bold text-white">{onlineVisitors}</p>
-                </div>
+            <div className="relative">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 via-yellow-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 transform hover:scale-105 transition-transform">
+                <BarChart3 className="w-7 h-7 text-white" />
               </div>
-            </motion.div>
-            <button
-              onClick={() => loadAnalytics()}
-              disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl hover:bg-gray-700 text-white transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Atualizar
-            </button>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-green-500 border-2 border-gray-900 flex items-center justify-center">
+                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              </div>
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">Analytics Dashboard</h1>
+              <p className="text-sm text-gray-500 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                Google Analytics 4 - Atualizado {lastUpdate.toLocaleTimeString('pt-BR')}
+              </p>
+            </div>
           </div>
-        </div>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => fetchData(true)} disabled={refreshing}
+            className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl font-medium shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all disabled:opacity-50">
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Atualizando...' : 'Atualizar'}
+          </motion.button>
+        </motion.div>
 
-        {/* KPIs Principais */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <MetricCard
-            icon={<Users className="w-6 h-6" />}
-            label="Visitantes Únicos"
-            value={(health?.unique_visitors || 0).toLocaleString()}
-            change={health?.visitors_change || 0}
-            color="purple"
-          />
-          <MetricCard
-            icon={<DollarSign className="w-6 h-6" />}
-            label="Receita Total"
-            value={`R$ ${((health?.revenue || 0) / 1000).toFixed(1)}k`}
-            change={health?.revenue_change || 0}
-            color="green"
-          />
-          <MetricCard
-            icon={<Target className="w-6 h-6" />}
-            label="Taxa de Conversão"
-            value={`${(health?.conversion_rate || 0).toFixed(1)}%`}
-            change={0}
-            color="cyan"
-          />
-          <MetricCard
-            icon={<TrendingUp className="w-6 h-6" />}
-            label="Ticket Médio"
-            value={`R$ ${(health?.average_order_value || 0).toFixed(0)}`}
-            change={health?.aov_change || 0}
-            color="orange"
-          />
-          <MetricCard
-            icon={<Clock className="w-6 h-6" />}
-            label="Tempo Médio no Site"
-            value={`${Math.round((health?.avg_time_seconds || 0) / 60)}min`}
-            change={health?.time_change || 0}
-            color="blue"
-          />
-        </div>
-
-        {/* Grid de Gráficos Principais */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Funil de Conversão */}
-          {funnel && (
-            <Card className="bg-gray-900/50 backdrop-blur-xl border-gray-800 p-6">
-              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <Zap className="w-5 h-5 text-yellow-400" />
-                Funil de Conversão (Últimos 30 dias)
-              </h3>
-              <div className="space-y-4">
-                <FunnelStep 
-                  label="👥 Visitantes Únicos" 
-                  value={funnel.step_visitors || 0} 
-                  percentage={100}
-                  color="purple"
-                />
-                <FunnelStep 
-                  label="👀 Demonstraram Interesse" 
-                  value={funnel.step_interested || 0} 
-                  percentage={funnel.step_visitors ? ((funnel.step_interested || 0) / funnel.step_visitors) * 100 : 0}
-                  color="cyan"
-                  dropOff={funnel.step_visitors - (funnel.step_interested || 0)}
-                />
-                <FunnelStep 
-                  label="🛒 Iniciaram Checkout" 
-                  value={funnel.step_checkout_started || 0} 
-                  percentage={funnel.step_visitors ? ((funnel.step_checkout_started || 0) / funnel.step_visitors) * 100 : 0}
-                  color="green"
-                  dropOff={(funnel.step_interested || 0) - (funnel.step_checkout_started || 0)}
-                />
-                <FunnelStep 
-                  label="💰 Finalizaram Compra" 
-                  value={funnel.step_purchased || 0} 
-                  percentage={funnel.step_visitors ? ((funnel.step_purchased || 0) / funnel.step_visitors) * 100 : 0}
-                  color="orange"
-                  dropOff={(funnel.step_checkout_started || 0) - (funnel.step_purchased || 0)}
-                />
+          <GlassCard className="lg:col-span-1" gradient>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Tempo Real</span>
+                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/20 rounded-full border border-green-500/30">
+                  <span className="relative flex h-2 w-2"><span className="animate-ping absolute h-full w-full rounded-full bg-green-400 opacity-75" /><span className="relative rounded-full h-2 w-2 bg-green-500" /></span>
+                  <span className="text-[10px] font-bold text-green-400 uppercase">Live</span>
+                </span>
               </div>
-            </Card>
-          )}
+              <div className="text-5xl font-black text-white"><AnimatedNumber value={realtime?.activeUsers || 0} /></div>
+              <p className="text-sm text-gray-400 mt-2">usuarios ativos agora</p>
+            </div>
+          </GlassCard>
 
-          {/* Distribuição por Dispositivo */}
-          {deviceStats.length > 0 && (
-            <Card className="bg-gray-900/50 backdrop-blur-xl border-gray-800 p-6">
-              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <Smartphone className="w-5 h-5 text-brand-400" />
-                Visitantes por Dispositivo
-              </h3>
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={deviceStats}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(props: any) => `${props.device} ${(props.percent * 100).toFixed(0)}%`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="visitors"
-                  >
-                    {deviceStats.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
-                    labelStyle={{ color: '#F3F4F6' }}
-                  />
-                </PieChart>
+          <GlassCard>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center"><Users className="w-5 h-5 text-white" /></div>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Usuarios</span>
+              </div>
+              <div className="text-3xl font-bold text-white"><AnimatedNumber value={kpis?.totalUsers || 0} /></div>
+              <div className="flex items-center gap-1 mt-2 text-emerald-400 text-sm"><TrendingUp className="w-4 h-4" /><span className="font-medium">+12.5%</span></div>
+            </div>
+          </GlassCard>
+
+          <GlassCard>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center"><Eye className="w-5 h-5 text-white" /></div>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Visualizacoes</span>
+              </div>
+              <div className="text-3xl font-bold text-white"><AnimatedNumber value={kpis?.totalViews || 0} /></div>
+              <div className="flex items-center gap-1 mt-2 text-emerald-400 text-sm"><TrendingUp className="w-4 h-4" /><span className="font-medium">+8.3%</span></div>
+            </div>
+          </GlassCard>
+
+          <GlassCard>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center"><MousePointerClick className="w-5 h-5 text-white" /></div>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Eventos</span>
+              </div>
+              <div className="text-3xl font-bold text-white"><AnimatedNumber value={kpis?.totalEvents || 0} /></div>
+              <div className="flex items-center gap-1 mt-2 text-emerald-400 text-sm"><TrendingUp className="w-4 h-4" /><span className="font-medium">+15.2%</span></div>
+            </div>
+          </GlassCard>
+
+          <GlassCard>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center"><Activity className="w-5 h-5 text-white" /></div>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Sessoes</span>
+              </div>
+              <div className="text-3xl font-bold text-white"><AnimatedNumber value={kpis?.totalSessions || 0} /></div>
+              <div className="flex items-center gap-1 mt-2 text-emerald-400 text-sm"><TrendingUp className="w-4 h-4" /><span className="font-medium">+10.1%</span></div>
+            </div>
+          </GlassCard>
+        </div>
+
+        <GlassCard>
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center"><TrendingUp className="w-5 h-5 text-white" /></div>
+                <div><h3 className="text-lg font-bold text-white">Trafego dos Ultimos 7 Dias</h3><p className="text-xs text-gray-500">Usuarios e Visualizacoes</p></div>
+              </div>
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-indigo-500" /><span className="text-gray-400">Usuarios</span></div>
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500" /><span className="text-gray-400">Visualizacoes</span></div>
+              </div>
+            </div>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={traffic}>
+                  <defs>
+                    <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6366f1" stopOpacity={0.4}/><stop offset="100%" stopColor="#6366f1" stopOpacity={0}/></linearGradient>
+                    <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={0.4}/><stop offset="100%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.3} />
+                  <XAxis dataKey="date" stroke="#6b7280" fontSize={12} />
+                  <YAxis stroke="#6b7280" fontSize={12} />
+                  <Tooltip contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }} />
+                  <Area type="monotone" dataKey="usuarios" stroke="#6366f1" strokeWidth={2} fill="url(#colorUsers)" name="Usuarios" />
+                  <Area type="monotone" dataKey="visualizacoes" stroke="#10b981" strokeWidth={2} fill="url(#colorViews)" name="Visualizacoes" />
+                </AreaChart>
               </ResponsiveContainer>
-            </Card>
-          )}
-        </div>
-
-        {/* Atribuição de Marketing - Tabela Completa */}
-        <Card className="bg-gray-900/50 backdrop-blur-xl border-gray-800 p-6">
-          <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-            <MousePointer className="w-5 h-5 text-brand-400" />
-            Atribuição de Marketing - Top 10 Fontes
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-800">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Fonte</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Campanha</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Visitantes</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Vendas</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Receita</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Conv%</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Ticket Médio</th>
-                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-400 whitespace-nowrap">Dispositivo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attribution.map((row, idx) => (
-                  <motion.tr
-                    key={idx}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
-                  >
-                    <td className="py-3 px-4">
-                      <div>
-                        <p className="text-white font-medium">{row.source}</p>
-                        <p className="text-xs text-gray-500">{row.medium}</p>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-400 max-w-[150px] truncate">{row.campaign}</td>
-                    <td className="py-3 px-4 text-right text-white">{row.visitors.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right text-white font-semibold">{row.sales_count || 0}</td>
-                    <td className="py-3 px-4 text-right text-green-400 font-bold">
-                      R$ {((row.total_revenue || 0) / 1000).toFixed(1)}k
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        (row.conversion_rate || 0) >= 5 ? 'bg-green-500/20 text-green-400' :
-                        (row.conversion_rate || 0) >= 2 ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-red-500/20 text-red-400'
-                      }`}>
-                        {(row.conversion_rate || 0).toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right text-white">R$ {(row.average_order_value || 0).toFixed(0)}</td>
-                    <td className="py-3 px-4 text-center">
-                      <span className="px-2 py-1 rounded-full text-xs bg-gray-800 text-gray-300">
-                        {row.primary_device}
-                      </span>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+            </div>
           </div>
-        </Card>
+        </GlassCard>
 
-        {/* Gráfico de Receita por Fonte */}
-        <Card className="bg-gray-900/50 backdrop-blur-xl border-gray-800 p-6">
-          <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-green-400" />
-            Receita por Fonte de Tráfego
-          </h3>
-          <ResponsiveContainer width="100%" height={350}>
-            <AreaChart data={attribution.slice(0, 8)}>
-              <defs>
-                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="source" stroke="#9CA3AF" />
-              <YAxis stroke="#9CA3AF" />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
-                labelStyle={{ color: '#F3F4F6' }}
-                formatter={(value: any) => [`R$ ${Number(value || 0).toFixed(2)}`, 'Receita']}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="total_revenue" 
-                stroke="#10B981" 
-                fillOpacity={1} 
-                fill="url(#colorRevenue)" 
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <GlassCard>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center"><FileText className="w-5 h-5 text-white" /></div>
+                <h3 className="text-lg font-bold text-white">Paginas Mais Visitadas</h3>
+              </div>
+              <div className="space-y-4">
+                {topPages.slice(0, 5).map((page, i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="flex justify-between text-sm"><span className="text-gray-300 truncate max-w-[200px]">{page.title || page.page}</span><span className="text-white font-bold">{page.views >= 1000 ? (page.views/1000).toFixed(1)+'K' : page.views}</span></div>
+                    <div className="h-2 bg-gray-800 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: (page.views / maxPageViews) * 100 + '%' }} transition={{ duration: 1, delay: i * 0.1 }} className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full" /></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </GlassCard>
 
-      </div>
-    </div>
-  )
-}
+          <GlassCard>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center"><Globe className="w-5 h-5 text-white" /></div>
+                <h3 className="text-lg font-bold text-white">Paises</h3>
+              </div>
+              <div className="space-y-3">
+                {countries.slice(0, 6).map((country, i) => (
+                  <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }} className="flex items-center justify-between p-3 rounded-xl bg-gray-800/50 hover:bg-gray-800 transition-colors">
+                    <div className="flex items-center gap-3"><span className="text-2xl">{country.flag}</span><span className="text-gray-300">{country.country}</span></div>
+                    <span className="text-white font-bold">{country.users >= 1000 ? (country.users/1000).toFixed(1)+'K' : country.users}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </GlassCard>
 
-function MetricCard({ icon, label, value, change, color }: {
-  icon: React.ReactNode
-  label: string
-  value: string
-  change: number
-  color: string
-}) {
-  const colorClasses = {
-    purple: 'from-purple-500/20 to-purple-600/20 border-purple-500/30',
-    green: 'from-green-500/20 to-green-600/20 border-green-500/30',
-    cyan: 'from-cyan-500/20 to-cyan-600/20 border-cyan-500/30',
-    orange: 'from-orange-500/20 to-orange-600/20 border-orange-500/30',
-    blue: 'from-blue-500/20 to-blue-600/20 border-blue-500/30',
-  }
+          <GlassCard>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-fuchsia-500 to-pink-600 flex items-center justify-center"><Share2 className="w-5 h-5 text-white" /></div>
+                <h3 className="text-lg font-bold text-white">Fontes de Trafego</h3>
+              </div>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart><Pie data={sources} dataKey="users" nameKey="source" cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2}>{sources.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="transparent" />)}</Pie><Tooltip contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} /></PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 space-y-2">
+                {sources.slice(0, 4).map((s, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} /><span className="text-gray-400">{s.source}</span></div>
+                    <span className="text-white font-medium">{s.users >= 1000 ? (s.users/1000).toFixed(1)+'K' : s.users}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </GlassCard>
+        </div>
 
-  return (
-    <motion.div
-      initial={{ scale: 0.95, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      className={`bg-gradient-to-br ${colorClasses[color as keyof typeof colorClasses]} backdrop-blur-sm rounded-2xl p-5 border`}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className="text-gray-400">{icon}</div>
-        {change !== 0 && (
-          <span className={`text-xs font-semibold ${change > 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {change > 0 ? '↑' : '↓'} {Math.abs(change).toFixed(1)}%
-          </span>
-        )}
-      </div>
-      <p className="text-sm text-gray-400 mb-1">{label}</p>
-      <p className="text-3xl font-black text-white">{value}</p>
-    </motion.div>
-  )
-}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <GlassCard><div className="p-5"><div className="flex items-center gap-2 mb-2"><Timer className="w-4 h-4 text-blue-400" /><span className="text-xs text-gray-500 uppercase tracking-wider">Sessoes/Usuario</span></div><div className="text-2xl font-bold text-white">{avgSessionDuration}</div></div></GlassCard>
+          <GlassCard><div className="p-5"><div className="flex items-center gap-2 mb-2"><ArrowDownRight className="w-4 h-4 text-rose-400" /><span className="text-xs text-gray-500 uppercase tracking-wider">Taxa de Rejeicao</span></div><div className="text-2xl font-bold text-white">{bounceRate}%</div></div></GlassCard>
+          <GlassCard><div className="p-5"><div className="flex items-center gap-2 mb-2"><FileText className="w-4 h-4 text-purple-400" /><span className="text-xs text-gray-500 uppercase tracking-wider">Paginas/Sessao</span></div><div className="text-2xl font-bold text-white">{pagesPerSession}</div></div></GlassCard>
+          <GlassCard><div className="p-5"><div className="flex items-center gap-2 mb-2"><Zap className="w-4 h-4 text-amber-400" /><span className="text-xs text-gray-500 uppercase tracking-wider">Engajamento</span></div><div className="text-2xl font-bold text-white">{engagement}</div></div></GlassCard>
+        </div>
 
-function FunnelStep({ label, value, percentage, color, dropOff }: {
-  label: string
-  value: number
-  percentage: number
-  color: string
-  dropOff?: number
-}) {
-  const colorClasses = {
-    purple: 'bg-purple-500',
-    cyan: 'bg-cyan-500',
-    green: 'bg-green-500',
-    orange: 'bg-orange-500',
-  }
+        {/* Dados Demográficos */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* Cidades */}
+          <GlassCard>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center"><MapPin className="w-5 h-5 text-white" /></div>
+                <h3 className="text-lg font-bold text-white">Cidades</h3>
+              </div>
+              <div className="space-y-2">
+                {cities.slice(0, 6).map((city, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm p-2 rounded-lg bg-gray-800/30 hover:bg-gray-800/50 transition-colors">
+                    <span className="text-gray-300 truncate max-w-[120px]">{city.city}</span>
+                    <span className="text-white font-bold">{city.users}</span>
+                  </div>
+                ))}
+                {cities.length === 0 && <p className="text-gray-500 text-sm">Dados insuficientes</p>}
+              </div>
+            </div>
+          </GlassCard>
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-gray-300">{label}</span>
-        <div className="flex items-center gap-3">
-          <span className="text-white font-semibold">{value.toLocaleString()}</span>
-          <span className="text-gray-400 text-sm">({percentage.toFixed(1)}%)</span>
-          {dropOff !== undefined && dropOff > 0 && (
-            <span className="text-red-400 text-xs">-{dropOff}</span>
-          )}
+          {/* Dispositivos */}
+          <GlassCard>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center"><Smartphone className="w-5 h-5 text-white" /></div>
+                <h3 className="text-lg font-bold text-white">Dispositivos</h3>
+              </div>
+              <div className="space-y-3">
+                {devices.map((device, i) => {
+                  const Icon = device.device === 'mobile' ? Smartphone : device.device === 'tablet' ? Tablet : Monitor;
+                  const totalDevices = devices.reduce((sum, d) => sum + d.users, 0);
+                  const percentage = totalDevices > 0 ? Math.round((device.users / totalDevices) * 100) : 0;
+                  return (
+                    <div key={i} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2"><Icon className="w-4 h-4 text-sky-400" /><span className="text-gray-300 capitalize">{device.device}</span></div>
+                        <span className="text-white font-bold">{percentage}%</span>
+                      </div>
+                      <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <motion.div initial={{ width: 0 }} animate={{ width: percentage + '%' }} transition={{ duration: 1, delay: i * 0.2 }} className="h-full bg-gradient-to-r from-sky-500 to-blue-500 rounded-full" />
+                      </div>
+                    </div>
+                  );
+                })}
+                {devices.length === 0 && <p className="text-gray-500 text-sm">Dados insuficientes</p>}
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* Faixa Etaria */}
+          <GlassCard>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center"><Users className="w-5 h-5 text-white" /></div>
+                <h3 className="text-lg font-bold text-white">Faixa Etaria</h3>
+              </div>
+              <div className="space-y-2">
+                {ages.map((age, i) => {
+                  const totalAges = ages.reduce((sum, a) => sum + a.users, 0);
+                  const percentage = totalAges > 0 ? Math.round((age.users / totalAges) * 100) : 0;
+                  return (
+                    <div key={i} className="flex items-center justify-between text-sm p-2 rounded-lg bg-gray-800/30">
+                      <span className="text-gray-300">{age.age}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-2 bg-gray-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full" style={{ width: percentage + '%' }} />
+                        </div>
+                        <span className="text-white font-bold w-10 text-right">{percentage}%</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {ages.length === 0 && <p className="text-gray-500 text-sm">Ative sinais do Google para ver dados demograficos</p>}
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* Navegadores */}
+          <GlassCard>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center"><Chrome className="w-5 h-5 text-white" /></div>
+                <h3 className="text-lg font-bold text-white">Navegadores</h3>
+              </div>
+              <div className="space-y-2">
+                {browsers.slice(0, 5).map((browser, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm p-2 rounded-lg bg-gray-800/30 hover:bg-gray-800/50 transition-colors">
+                    <span className="text-gray-300">{browser.browser}</span>
+                    <span className="text-white font-bold">{browser.users}</span>
+                  </div>
+                ))}
+                {browsers.length === 0 && <p className="text-gray-500 text-sm">Dados insuficientes</p>}
+              </div>
+            </div>
+          </GlassCard>
         </div>
       </div>
-      <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
-        <div 
-          className={`${colorClasses[color as keyof typeof colorClasses]} h-3 rounded-full transition-all duration-500`}
-          style={{ width: `${percentage}%` }}
-        ></div>
-      </div>
     </div>
-  )
+  );
 }

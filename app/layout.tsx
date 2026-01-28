@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { headers } from 'next/headers' // ✅ Importar headers
 import AnalyticsTracker from '@/components/AnalyticsTracker'
 import WhatsAppFloating from '@/components/WhatsAppFloating'
+import FacebookPixel from '@/components/tracking/FacebookPixel'
 import { ToastProvider } from '@/components/ui/toast' // ✅ Provider para notificações
 import { Toaster } from 'sonner' // ✅ Toast visual
 import { Plus_Jakarta_Sans } from 'next/font/google'
@@ -84,33 +85,6 @@ export default async function RootLayout({
         />
         {/* End Google tag */}
 
-        {/* Meta Pixel Code */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              !function(f,b,e,v,n,t,s)
-              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-              n.queue=[];t=b.createElement(e);t.async=!0;
-              t.src=v;s=b.getElementsByTagName(e)[0];
-              s.parentNode.insertBefore(t,s)}(window, document,'script',
-              'https://connect.facebook.net/en_US/fbevents.js');
-              fbq('init', '1430691785287241');
-              fbq('track', 'PageView');
-            `,
-          }}
-        />
-        <noscript>
-          <img
-            height="1"
-            width="1"
-            style={{ display: 'none' }}
-            src="https://www.facebook.com/tr?id=1430691785287241&ev=PageView&noscript=1"
-          />
-        </noscript>
-        {/* End Meta Pixel Code */}
-
         {/* Mercado Pago SDK */}
         <script src="https://sdk.mercadopago.com/js/v2" />
         
@@ -128,6 +102,11 @@ export default async function RootLayout({
               }
             }}
           />
+          
+          {/* Facebook Pixel - Rastreamento Avançado */}
+          <Suspense fallback={null}>
+            <FacebookPixel />
+          </Suspense>
           
           {/* Analytics Tracker - rastreia visitas automaticamente */}
           <Suspense fallback={null}>
